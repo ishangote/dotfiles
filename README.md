@@ -292,19 +292,42 @@ Both terminals are set up the same way:
 ### WezTerm
 
 All of it lives in `home/.config/wezterm/wezterm.lua`, so it's fully declarative
-and edits apply to new windows immediately.
+and edits apply to new windows immediately. Full key reference, including the
+defaults worth knowing: [`docs/wezterm-keys.md`](docs/wezterm-keys.md).
 
 Option+arrow sends `ESC-b` / `ESC-f` and Cmd+arrow sends `Ctrl-A` / `Ctrl-E`,
 which is what zsh's line editor expects.
 
-On copy-on-select: WezTerm's defaults for single, double and triple click are all
-`CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection")` - the
-`Clipboard` half is what makes a plain drag clobber your clipboard. They're
-overridden to `PrimarySelection`, which still *completes* the selection (so it
-stays highlighted for Cmd+C) but on macOS the primary selection isn't the system
-clipboard, so Cmd+V is unaffected. Single click keeps
-`CompleteSelectionOrOpenLinkAtMouseCursor` rather than `Nop` so click-to-open-link
-still works.
+Pane bindings, since the defaults (`Ctrl+Shift+Opt+'` and `Ctrl+Shift+Opt+5`) are
+unmemorable and WezTerm ships **no** binding for closing a single pane:
+
+| | |
+| --- | --- |
+| `Cmd` + `D` | Split - new pane to the right |
+| `Cmd` + `Shift` + `D` | Split - new pane below |
+| `Cmd` + `Shift` + `W` | Close pane (with confirm) |
+| `Cmd` + `Opt` + arrows | Move focus between panes |
+
+`Cmd+W` is left alone and still closes the whole tab. `Ctrl+Shift+arrows` still
+moves pane focus too - that default isn't removed.
+
+On copy-on-select, and the trap to avoid: **do not** reach for
+`CompleteSelection("PrimarySelection")`. On macOS there is no separate primary
+selection - it resolves to the same `NSPasteboard` as `Clipboard`, so it clobbers
+Cmd+V exactly like the default `ClipboardAndPrimarySelection` does. There is no
+"copy nowhere" destination either.
+
+So every mouse-up that would complete a selection is bound to `act.Nop`. The
+selection is made on Down/Drag, not Up, so text still highlights and Cmd+C still
+copies it. All six Up variants must be listed - Shift+click and Alt+click keep
+the copying default otherwise. Verify with:
+
+```sh
+wezterm show-keys | grep 'Up {'   # nothing may say Complete*
+```
+
+`Nop` costs click-to-open-link, since the default action did the opening and the
+copying in one. `Cmd`+click takes that over.
 
 ### iTerm2
 

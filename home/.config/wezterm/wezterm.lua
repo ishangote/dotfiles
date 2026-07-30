@@ -23,34 +23,47 @@ config.keys = {
   -- Explicit, so copy/paste can't drift if the mouse bindings below change.
   { key = "c", mods = "CMD", action = act.CopyTo("Clipboard") },
   { key = "v", mods = "CMD", action = act.PasteFrom("Clipboard") },
+
+  -- Panes. The defaults are Ctrl+Shift+Opt+' and Ctrl+Shift+Opt+5, which nobody
+  -- builds muscle memory for, and there is no default binding for closing a
+  -- single pane at all - Cmd+W closes the whole tab and every pane in it.
+  { key = "d", mods = "CMD",       action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) }, -- pane to the right
+  { key = "d", mods = "CMD|SHIFT", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },   -- pane below
+  { key = "w", mods = "CMD|SHIFT", action = act.CloseCurrentPane({ confirm = true }) },
+
+  -- Pane focus. Ctrl+Shift+Arrow still works (it's a default), but the Cmd+Opt
+  -- chord is reachable one-handed. Plain Cmd+Arrow is taken by line motion above.
+  { key = "LeftArrow",  mods = "CMD|ALT", action = act.ActivatePaneDirection("Left") },
+  { key = "RightArrow", mods = "CMD|ALT", action = act.ActivatePaneDirection("Right") },
+  { key = "UpArrow",    mods = "CMD|ALT", action = act.ActivatePaneDirection("Up") },
+  { key = "DownArrow",  mods = "CMD|ALT", action = act.ActivatePaneDirection("Down") },
 }
 
 -- Selecting text must NOT put it on the clipboard - Cmd+C does that explicitly.
 --
--- WezTerm's defaults for all three of these are
--- "ClipboardAndPrimarySelection", which is what makes a plain drag clobber the
--- clipboard. Switching to "PrimarySelection" still *completes* the selection, so
--- it stays highlighted and Cmd+C can copy it, but on macOS the primary selection
--- is not the system clipboard, so Cmd+V is untouched.
+-- There is no "copy nowhere" destination, so every mouse-up that would complete
+-- a selection is bound to Nop. The selection itself is made on Down/Drag, not
+-- Up, so text still highlights normally and Cmd+C still copies it.
 --
--- Keeping CompleteSelectionOrOpenLinkAtMouseCursor for the single click (rather
--- than Nop) preserves click-to-open-link.
+-- Do NOT use CompleteSelection("PrimarySelection") here hoping it lands
+-- somewhere harmless. On macOS there is no separate primary selection - it
+-- resolves to the same system pasteboard as "Clipboard", so it clobbers Cmd+V
+-- exactly like the default does. This was the bug.
+--
+-- Every Up variant has to be listed. Any one left out silently keeps the
+-- default, which copies - Shift+click and Alt+click are the easy ones to miss.
+-- Verify with: wezterm show-keys | grep 'Up {'  (nothing may say Complete*)
 config.mouse_bindings = {
-  {
-    event = { Up = { streak = 1, button = "Left" } },
-    mods = "NONE",
-    action = act.CompleteSelectionOrOpenLinkAtMouseCursor("PrimarySelection"),
-  },
-  { -- double click: word
-    event = { Up = { streak = 2, button = "Left" } },
-    mods = "NONE",
-    action = act.CompleteSelection("PrimarySelection"),
-  },
-  { -- triple click: line
-    event = { Up = { streak = 3, button = "Left" } },
-    mods = "NONE",
-    action = act.CompleteSelection("PrimarySelection"),
-  },
+  { event = { Up = { streak = 1, button = "Left" } }, mods = "NONE",      action = act.Nop },
+  { event = { Up = { streak = 1, button = "Left" } }, mods = "SHIFT",     action = act.Nop },
+  { event = { Up = { streak = 1, button = "Left" } }, mods = "ALT",       action = act.Nop },
+  { event = { Up = { streak = 1, button = "Left" } }, mods = "SHIFT|ALT", action = act.Nop },
+  { event = { Up = { streak = 2, button = "Left" } }, mods = "NONE",      action = act.Nop }, -- word
+  { event = { Up = { streak = 3, button = "Left" } }, mods = "NONE",      action = act.Nop }, -- line
+
+  -- Plain click used to open links, via the same action that did the copying.
+  -- Cmd+click takes that over, which matches the rest of macOS anyway.
+  { event = { Up = { streak = 1, button = "Left" } }, mods = "CMD", action = act.OpenLinkAtMouseCursor },
 }
 
 return config
