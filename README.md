@@ -289,6 +289,17 @@ Both terminals are set up the same way:
 | Select text | Does **not** copy |
 | `Cmd` + `C` | Copies the selection |
 
+**If selecting text copies anyway, check what's running in the terminal before
+you touch either terminal's config.** A TUI that turns on mouse reporting
+(`\e[?1000h`) takes the mouse away from the terminal and does its own thing with
+it. Claude Code is the one that bites: it has its own `copyOnSelect` setting
+which **defaults to on**, so it copies on select no matter what iTerm2 or WezTerm
+are set to. Turn it off with `/config` → Input & controls → "Copy on select".
+
+That setting lives in `~/.claude.json`, which also holds oauth tokens and
+per-project history, so it is not symlinked into this repo and not declarative.
+It's a one-time toggle per machine.
+
 ### WezTerm
 
 All of it lives in `home/.config/wezterm/wezterm.lua`, so it's fully declarative
