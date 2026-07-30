@@ -1,0 +1,6 @@
+result
+result-*
+.DS_Store
+
+# Obsidian per-session pane layout, not a setting
+home/obsidian/config/workspace.json

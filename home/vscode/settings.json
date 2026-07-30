@@ -1,0 +1,103 @@
+{
+  // === Formatting Defaults ===
+  "editor.formatOnSave": true,
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  // === Fonts & UI ===
+  "editor.fontFamily": "Fira Code",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 14,
+  "editor.lineHeight": 22,
+  "editor.letterSpacing": 0.2,
+  "workbench.colorTheme": "Pitch Black",
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.settings.applyToAllProfiles": [
+    "workbench.activityBar.visible",
+    "workbench.sideBar.location",
+    "workbench.panel.defaultLocation",
+    "todo-tree.general.showActivityBarBadge",
+    "bookmarks.saveBookmarksInProject",
+  ],
+  // === Copilot ===
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false
+  },
+  // === Better Comments ===
+  "better-comments.tags": [
+    {
+      "tag": "!",
+      "color": "#FF2D00",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true
+    },
+    {
+      "tag": "?",
+      "color": "#3498DB",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true
+    },
+    {
+      "tag": "//",
+      "color": "#474747",
+      "strikethrough": true,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": false
+    },
+    {
+      "tag": "TODO",
+      "color": "#FF8C00",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true
+    },
+    {
+      "tag": "FIXME",
+      "color": "#FF2D00",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true
+    },
+    {
+      "tag": "NOTE",
+      "color": "#3CB371",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true
+    }
+  ],
+  // === Bookmarks ===
+  "bookmarks.saveBookmarksInProject": true,
+  // === Todo Tree ===
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "NOTE"
+  ],
+  "todo-tree.highlights.enabled": false, // disable inline highlights completely
+  "todo-tree.tree.showBadges": true,
+  "todo-tree.tree.showCountsInTree": true,
+  "todo-tree.filtering.excludeGlobs": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.venv/**",
+    "**/__pycache__/**"
+  ],
+  "todo-tree.general.showActivityBarBadge": true,
+  "window.newWindowProfile": "Default",
+}
