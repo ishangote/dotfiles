@@ -56,7 +56,10 @@ in
       push = "git push";
       pull = "git pull";
       m = "git switch main";
-      cc = "claude --dangerously-skip-permissions";
+      # Bypass mode is set in ~/.claude/settings.json (permissions.defaultMode),
+      # so it applies to every entry point - shell, IDE extension, desktop app -
+      # not just interactive shells. No need for the flag here.
+      cc = "claude";
     };
   };
 

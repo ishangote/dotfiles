@@ -84,6 +84,13 @@ Only two files under `~/.claude` are managed (`settings.json` and
 `statusline-command.sh`). Everything else there - sessions, projects, history,
 `settings.local.json` - is machine-local runtime state and is left alone.
 
+That `settings.json` sets `permissions.defaultMode = "bypassPermissions"`, so
+every session starts in bypass mode with no permission prompts - deliberate, not
+an oversight. It's a setting rather than a `--dangerously-skip-permissions`
+alias so it holds for every entry point: shell, IDE extension, desktop app.
+`skipDangerousModePermissionPrompt` suppresses the one-time confirmation screen
+that mode would otherwise show on startup.
+
 ## Homebrew is declarative
 
 `configuration.nix` sets `homebrew.onActivation.cleanup = "zap"`. Every switch

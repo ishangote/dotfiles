@@ -7,6 +7,10 @@
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true
   },
+  "effortLevel": "high",
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
   "skipDangerousModePermissionPrompt": true,
   "theme": "auto"
 }
