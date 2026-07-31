@@ -153,6 +153,12 @@
       "alfred"      # installs "Alfred 5.app"
       "alt-tab"
       "claude"      # Anthropic's desktop app (NOT claude-code, see below)
+      # Docker Desktop. The cask is "docker-desktop" - the plain "docker" cask
+      # was renamed in 2025, and the "docker" *formula* is the CLI alone, which
+      # would fight the app for /usr/local/bin/docker. The app ships the whole
+      # client (docker, compose, credential helpers) and symlinks it there
+      # itself, so nothing else needs declaring.
+      "docker-desktop"
       "font-fira-code"
       "font-fira-code-nerd-font"
       "github"      # GitHub Desktop (the cask is "github", not "github-desktop")
@@ -183,10 +189,12 @@
     # ./mas-apps.sh, which runs from a normal shell where the daemon is
     # reachable. See README.
 
-    # Claude, Numi, Obsidian and VS Code were all installed by hand into
+    # Claude, Docker, Numi, Obsidian and VS Code were all installed by hand into
     # /Applications before brew knew about them. onActivation.extraFlags has
     # --force, so the first switch lets brew adopt and overwrite those bundles.
-    # App data lives in ~/Library and survives that.
+    # App data lives in ~/Library and survives that - for Docker that means
+    # images, volumes and containers (~/Library/Containers/com.docker.docker)
+    # are kept when brew replaces the app.
 
     # Deliberately NOT declared:
     #   fzf                    -> installed via Nix in home.nix instead
@@ -196,5 +204,10 @@
     #                             would be a second, competing install. The
     #                             "claude" cask above is the desktop app, which
     #                             is a different thing.
+    #   docker (formula)       -> the CLI only, and it installs its own
+    #                             /usr/local/bin/docker. Docker Desktop already
+    #                             puts one there; two owners of that path is a
+    #                             fight nobody wins.
+    #   docker-compose         -> shipped with Docker Desktop as a CLI plugin.
   };
 }

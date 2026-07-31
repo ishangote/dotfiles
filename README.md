@@ -14,7 +14,7 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Shell (zsh, aliases, starship prompt)
 - Editor (Neovim with the rose-pine moon theme)
 - Terminal (WezTerm with the rose-pine moon theme)
-- Apps (VS Code, Obsidian, Claude desktop, Numi, Alfred, AltTab, Magnet, Handy, iTerm2)
+- Apps (VS Code, Obsidian, Claude desktop, Docker Desktop, Numi, Alfred, AltTab, Magnet, Handy, iTerm2)
 - Alfred preferences, AltTab settings
 - Open-at-login for Alfred, Magnet and Handy
 - VS Code settings, keybindings and extension list
@@ -93,16 +93,16 @@ Everything already on this machine is declared there, so the first switch is a
 no-op. But if you `brew install` something later, add it to `configuration.nix`
 too - otherwise the next `./rebuild.sh` takes it straight back out.
 
-Magnet is Mac App Store only, so it's declared under `homebrew.masApps` instead
-of `casks`, and needs the `mas` CLI (in `brews`). **You must be signed into the
-App Store with the Apple ID that purchased Magnet**, or the switch fails there.
+Magnet is Mac App Store only, so it isn't in `casks` at all - App Store apps are
+declared in `home/mas/apps.tsv` and installed by `./mas-apps.sh`, for the reason
+spelled out under [App Store apps](#app-store-apps).
 
 Things deliberately left out of the brew lists:
 
 - `claude-code` cask - `claude` is the native installer at `~/.local/bin/claude`
   and self-updates. The cask would be a second, competing install.
-- Visual Studio Code - installed by hand into `/Applications`, never via brew,
-  so `zap` doesn't touch it.
+- `docker` formula and `docker-compose` - both ship inside Docker Desktop. The
+  formula would also claim `/usr/local/bin/docker`, which the app owns.
 
 ## VS Code
 
@@ -372,6 +372,26 @@ in-memory copy on exit and will overwrite you.
 Why the plist and not `defaults`: key mappings are a nested dictionary inside the
 `New Bookmarks` profile array. Writing that through `defaults` replaces the whole
 array, which would destroy the profile, theme and font along with it.
+
+## Docker
+
+Docker Desktop comes from the `docker-desktop` cask. The app bundles the whole
+client and symlinks it into `/usr/local/bin` itself, so `docker`, `docker compose`
+and the credential helpers all work with nothing else declared.
+
+Two things the config can't do for you:
+
+- **First launch needs an admin password.** Docker Desktop installs a privileged
+  helper for its VM and networking, and that prompt only appears in a GUI
+  session. Launch the app once by hand after a fresh setup.
+- **The daemon has to be running.** `docker` on the CLI talks to the VM the app
+  manages - if the app isn't open, every command fails with a socket error.
+  Docker's own "Start Docker Desktop when you sign in" setting handles that;
+  it's not declared as a launchd agent here because unlike Alfred or Magnet the
+  VM is worth starting deliberately.
+
+Images, volumes and containers live in `~/Library/Containers/com.docker.docker`,
+which is untouched by rebuilds and by brew replacing the app.
 
 ## Not managed here
 
