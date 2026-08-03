@@ -107,9 +107,10 @@ in
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/nvim";
 
-  # Only these two files under ~/.claude are managed. Everything else there
-  # (sessions, projects, history.jsonl, settings.local.json) is machine-local
-  # runtime state and is left alone.
+  # Only settings.json, statusline-command.sh and CLAUDE.md (declared with the
+  # agent policy at the bottom of this file) under ~/.claude are managed.
+  # Everything else there (sessions, projects, history.jsonl,
+  # settings.local.json) is machine-local runtime state and is left alone.
   home.file.".claude/settings.json".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/settings.json";
   home.file.".claude/statusline-command.sh".source =
@@ -133,6 +134,8 @@ in
   #
   # home.file."igote-dev/<vault>/.obsidian".source =
   #   config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/obsidian/config";
+  home.file."igote-workspace/.obsidian".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/obsidian/config";
 
   # configuration.nix points screencapture.location here. macOS does not create
   # the folder itself - if it's missing, screenshots silently land on the Desktop.
@@ -182,9 +185,18 @@ in
     };
   };
 
-  # One agent policy, shared by every agent that reads one.
+  # One agent policy, shared by every agent that reads one. AGENTS.md is the
+  # canonical, harness-agnostic file; each harness gets a link to it under the
+  # name it looks for. USER.md and OPINIONS.md sit beside it in ~ because
+  # AGENTS.md references them by path and loads them on demand.
   home.file.".claude/CLAUDE.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
   home.file.".codex/AGENTS.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
+  home.file."AGENTS.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
+  home.file."USER.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/USER.md";
+  home.file."OPINIONS.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/OPINIONS.md";
 }
