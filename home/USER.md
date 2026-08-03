@@ -2,10 +2,10 @@
 
 - **Name:** Ishan Gote
 - **What to call me:** Ishan
-- **Handle:** igote
 - **Timezone:** America/Los_Angeles (Pacific Time)
 - **Location:** Bellevue, WA, USA
 - **Role:** Software engineer.
+- **LinkedIn**: www.linkedin.com/in/ishangote
 
 ## Goals
 
