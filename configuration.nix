@@ -142,6 +142,10 @@
       "cmake"
       "gh"
       "googletest"
+      # Agent multiplexer: owns the terminals Claude Code and friends run in, so
+      # they survive a closed laptop. The server auto-spawns on first client
+      # launch, so the formula's `brew services start herdr` caveat is noise.
+      "herdr"
       "mas"         # App Store CLI, required by masApps below
       "poetry"
       "poppler"

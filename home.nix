@@ -107,6 +107,13 @@ in
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/nvim";
 
+  # herdr gets the file, not the directory. Unlike nvim and wezterm above, its
+  # config directory doubles as its runtime directory - herdr.sock and
+  # sessions/ live in ~/.config/herdr - and symlinking the directory would drag
+  # live sockets and session state into this repo.
+  home.file.".config/herdr/config.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/herdr/config.toml";
+
   # Only settings.json, statusline-command.sh and CLAUDE.md (declared with the
   # agent policy at the bottom of this file) under ~/.claude are managed.
   # Everything else there (sessions, projects, history.jsonl,

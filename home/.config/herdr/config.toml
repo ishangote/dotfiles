@@ -1,0 +1,87 @@
+# herdr - terminal workspace manager for AI coding agents.
+#
+# Only the settings that differ from herdr's defaults live here, plus any that
+# were deliberately tested and pinned even where they match the default. Run
+# `herdr --default-config` to see the full annotated schema, and
+# `herdr config check` to validate this file after editing.
+#
+# This file is symlinked from the dotfiles repo, so edits here are live.
+# The running server does not reload it on its own: press prefix+shift+r,
+# or run `herdr server reload-config`.
+#
+# NOTE: only this file is symlinked, not the whole ~/.config/herdr directory.
+# herdr keeps runtime state (herdr.sock, sessions/) in that same directory,
+# and none of that belongs in git.
+
+[theme]
+# herdr ships rose-pine and rose-pine-dawn. It does NOT ship rose-pine-moon,
+# which is what WezTerm and Neovim use here. Moon is essentially rose-pine with
+# a lifted background, so the base theme supplies the hues and the three
+# overrides below supply moon's backgrounds. Accent colors are deliberately left
+# alone rather than hand-mapped - the built-in already has them right.
+name = "rose-pine"
+
+[theme.custom]
+panel_bg = "#232136"    # moon base
+surface0 = "#2a273f"    # moon surface
+surface1 = "#393552"    # moon overlay
+
+[ui]
+# Selecting text must NOT put it on the clipboard. Same rule the terminal and
+# Claude Code are already held to, and herdr is a third place that has to be
+# told: it captures the mouse for its own UI, so its copy_on_select wins over
+# WezTerm's mouse bindings inside a herdr pane. Defaults to true.
+#
+# Load-bearing, since mouse_capture below is on and herdr therefore owns the
+# mouse and makes its own selections.
+#
+# Verified consequence: the copy key inside herdr is Ctrl+C, not Cmd+C, because
+# WezTerm keeps Cmd+C for its own (empty) selection so it never reaches herdr,
+# and herdr's copy key is not rebindable - there is no `copy` entry in [keys].
+# Ctrl+C is not swallowed though: it copies the pending selection AND still
+# passes through to the app underneath, so Claude Code's clear-input-then-
+# interrupt ladder works exactly as it does outside herdr.
+# Use Shift+drag then Cmd+C if you want the familiar copy semantics instead.
+# See the copy-on-select section of the README for the whole story.
+copy_on_select = false
+
+# Left at the default (true), after trying it both ways on this machine.
+# This one setting owns herdr's entire mouse UI, so it is all or nothing:
+#
+#   true  - click to switch panes and spaces, drag to select in herdr.
+#           Cmd+click on a URL does nothing: herdr has the mouse and WezTerm
+#           never sees the click. herdr's own copy key is Ctrl+C.
+#   false - Cmd+click opens URLs again, but herdr has NO mouse at all. No
+#           clicking panes, no clicking spaces, no herdr selection.
+#
+# Verified both, and true wins on the asymmetry: under true, opening a link
+# still has a workaround (select it, copy, paste), while under false there is no
+# way at all to click a pane. Losing navigation costs more than losing a click
+# shortcut for something you can still reach another way.
+#
+# Escape hatch that works either way: Shift is WezTerm's
+# bypass_mouse_reporting_modifiers, so Shift+drag makes a terminal-native
+# selection over herdr's head, which Cmd+C then copies. Verified working.
+# That is the way to grab a URL or any other text without herdr in the middle.
+#
+# Note this setting does NOT change anything inside an agent pane. Claude Code
+# requests the mouse itself, so it keeps its own selection and its own
+# copyOnSelect (a per-machine toggle in ~/.claude.json, see the README).
+#
+# Pinned explicitly rather than left to the default. This is a tested decision,
+# not an accepted default, and it should not quietly reverse if upstream ever
+# changes what true means or what the default is.
+mouse_capture = true
+
+[update]
+# Homebrew owns the installed version - configuration.nix declares herdr in
+# `brews`, and homebrew.onActivation.cleanup = "zap" means every rebuild
+# reconciles against that list. A background nag to self-update invites
+# `herdr update`, which would swap the binary out from under Homebrew and leave
+# the declared version and the real one silently disagreeing. Same failure mode
+# as VS Code Settings Sync overwriting repo-managed settings.
+# Upgrade with `brew upgrade herdr` instead.
+version_check = false
+
+# manifest_check is left on. It refreshes agent-detection rules, not the binary,
+# so it improves which agents herdr recognizes without fighting Homebrew.

@@ -14,6 +14,7 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Shell (zsh, aliases, starship prompt)
 - Editor (Neovim with the rose-pine moon theme)
 - Terminal (WezTerm with the rose-pine moon theme)
+- Agent multiplexer (herdr, themed to match)
 - Apps (VS Code, Obsidian, Claude desktop, Docker Desktop, Numi, Alfred, AltTab, Magnet, Handy, iTerm2)
 - Alfred preferences, AltTab settings
 - Open-at-login for Alfred, Magnet and Handy
@@ -76,6 +77,11 @@ The files under `home/` are the real files - editing them here is editing your
 live config, no rebuild needed. `home.nix` uses `mkOutOfStoreSymlink` to point
 `~/.config/nvim`, `~/.config/wezterm` and the Claude files straight at this repo,
 so the two never drift.
+
+herdr is the exception to the directory-shaped ones: only
+`~/.config/herdr/config.toml` is linked, not `~/.config/herdr`. herdr keeps its
+socket and session state in that same directory, and linking the directory would
+pull live runtime state into the repo.
 
 Run `./rebuild.sh` only when you change something that isn't a symlinked file:
 a package list, a shell alias, a macOS default.
@@ -307,6 +313,32 @@ That setting lives in `~/.claude.json`, which also holds oauth tokens and
 per-project history, so it is not symlinked into this repo and not declarative.
 It's a one-time toggle per machine.
 
+herdr is the third place that has to be told, and the same trap: it captures the
+mouse for its own UI, and its `copy_on_select` also **defaults to on**, so inside
+a herdr pane it wins over WezTerm's `Nop` bindings. Unlike Claude Code's, this
+one is declarative - `[ui] copy_on_select = false` in
+`home/.config/herdr/config.toml`, already set.
+
+**Inside a herdr pane the copy key is `Ctrl` + `C`, not `Cmd` + `C`.** That's the
+one place the table above doesn't hold. WezTerm takes `Cmd+C` for its own
+selection, which is empty because herdr owns the mouse, so it never reaches
+herdr. herdr's copy key is not configurable - there's no `copy` entry in
+`[keys]`, it's baked into the `copy_on_select = false` path.
+
+`Ctrl+C` is *not* swallowed. It copies any pending selection **and** still passes
+through to whatever is running underneath, so Claude Code's own `Ctrl+C` ladder
+(clear the input, then interrupt) works exactly as it does outside herdr. With a
+selection pending it does both at once. Verified, not inferred - this was the
+thing worth checking before trusting the setting, since a multiplexer that ate
+`Ctrl+C` would mean not being able to interrupt a running agent.
+
+A copy fires a clipboard toast (`[ui.toast.clipboard]`, on by default). That's the
+tell for which of the two happened.
+
+If you want the familiar semantics inside herdr, `Shift`+drag selects over its
+head and `Cmd+C` copies, because `Shift` is WezTerm's
+`bypass_mouse_reporting_modifiers`. See the herdr section for the rest.
+
 ### WezTerm
 
 All of it lives in `home/.config/wezterm/wezterm.lua`, so it's fully declarative
@@ -379,6 +411,77 @@ in-memory copy on exit and will overwrite you.
 Why the plist and not `defaults`: key mappings are a nested dictionary inside the
 `New Bookmarks` profile array. Writing that through `defaults` replaces the whole
 array, which would destroy the profile, theme and font along with it.
+
+## herdr
+
+A terminal workspace manager for coding agents. It owns the terminals Claude Code
+and friends run in, so an agent keeps working when the laptop closes or the
+network drops, and you reattach later instead of starting over. Think tmux,
+scoped to agents: it doesn't wrap or replace the CLIs, it just holds their PTYs.
+The sidebar tracks which agents are working, blocked or idle.
+
+Installed from `brews` in `configuration.nix` - it's in homebrew-core, no tap.
+Not the `curl | sh` installer upstream advertises, which would be invisible to
+this repo and absent on a fresh machine.
+
+```sh
+herdr                 # launch or attach
+herdr status          # client and server state
+herdr config check    # validate config.toml
+```
+
+Nothing needs starting. The formula's caveat suggests `brew services start
+herdr`, but the client auto-spawns a server if one isn't running, so there's no
+launchd agent here and nothing to declare.
+
+Config is `home/.config/herdr/config.toml`, live-symlinked. Only the handful of
+settings that differ from upstream defaults are in it - run
+`herdr --default-config` for the full annotated schema. The running server does
+not pick up edits on its own: `prefix+shift+r`, or `herdr server reload-config`.
+The prefix is the default `ctrl+b`, which is free here because there's no tmux
+and WezTerm's bindings are all Cmd-based. Confirmed it doesn't collide with
+Claude Code either - `ctrl+b` enters prefix mode cleanly with an agent focused.
+
+Detach with `prefix` then `q`. Quitting WezTerm entirely and running `herdr`
+again brings the session back with the agent still alive and scrollback intact,
+which is the whole point of the thing.
+
+On the theme: herdr ships `rose-pine` and `rose-pine-dawn`, but **not**
+`rose-pine-moon`, which is what Neovim and WezTerm use. Moon is close to
+rose-pine with a lifted background, so the config takes the built-in theme for
+its hues and overrides three background tokens (`panel_bg`, `surface0`,
+`surface1`) to moon's values. The accent colors are left alone rather than
+hand-mapped. The result is indistinguishable from a WezTerm pane side by side,
+so the overrides are doing their job - if herdr ever starts looking darker than
+the terminal around it, those three tokens stopped applying.
+
+On the mouse: `[ui] mouse_capture` is a single all-or-nothing switch over herdr's
+entire mouse UI, and it was tried both ways here before settling on the default.
+
+| | `mouse_capture = true` | `false` |
+| --- | --- | --- |
+| Click panes and spaces | yes | **no** |
+| Drag-select inside herdr | yes, copy with `Ctrl+C` | no |
+| `Cmd`+click a URL | **no** | yes |
+
+It's on. The deciding argument is the asymmetry, not preference: with capture on,
+opening a link still has a route (select it, copy, paste), while with it off
+there is no way to click a pane at all. Losing navigation costs more than losing
+a shortcut to something still reachable another way.
+
+The escape hatch worth remembering: **`Shift`+drag selects over herdr's head**,
+and `Cmd+C` copies it. `Shift` is WezTerm's `bypass_mouse_reporting_modifiers`,
+so it hands the mouse back to the terminal regardless of what the app asked for.
+That's how to grab a URL or any other text without herdr in the middle, and it's
+why `wezterm.lua` binds `SHIFT` mouse-up to `Nop` alongside the others - that
+binding stops the Shift+drag selection auto-copying.
+
+**Do not run `herdr update`.** It self-updates the binary, which Homebrew owns
+here - `onActivation.cleanup = "zap"` reconciles against the `brews` list every
+rebuild, so a self-update leaves the declared version and the real one
+disagreeing. The background version check is off in the config for that reason.
+Upgrade with `brew upgrade herdr`. The separate `manifest_check` is left on: it
+refreshes agent-detection rules, not the binary.
 
 ## Docker
 
