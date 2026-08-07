@@ -4,6 +4,7 @@
 input=$(cat)
 
 model=$(echo "$input" | jq -r '.model.display_name // "Claude"')
+effort=$(echo "$input" | jq -r '.effort.level // empty')
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 dir_name=$(basename "$cwd" 2>/dev/null)
 
@@ -18,6 +19,11 @@ CYAN=$'\033[2;36m'
 YELLOW=$'\033[2;33m'
 RED=$'\033[2;31m'
 GREEN=$'\033[2;32m'
+MAGENTA=$'\033[2;35m'
+
+# Effort level (low/medium/high/xhigh), shown next to the model when present
+effort_segment=""
+[ -n "$effort" ] && effort_segment=$(printf " %s%s%s" "$MAGENTA" "$effort" "$RESET")
 
 # Build context usage segment with color thresholds
 ctx_segment=""
@@ -57,7 +63,7 @@ if [ -n "$five" ] || [ -n "$week" ]; then
   rate_segment=$(printf "%s%s%s" "$DIM" "$parts" "$RESET")
 fi
 
-printf "%s%s%s %s%s%s %s|%s %s" "$CYAN" "$model" "$RESET" "$DIM" "$dir_name" "$RESET" "$DIM" "$RESET" "$ctx_segment"
+printf "%s%s%s%s %s%s%s %s|%s %s" "$CYAN" "$model" "$RESET" "$effort_segment" "$DIM" "$dir_name" "$RESET" "$DIM" "$RESET" "$ctx_segment"
 
 if [ -n "$rate_segment" ]; then
   printf " %s|%s %s" "$DIM" "$RESET" "$rate_segment"
