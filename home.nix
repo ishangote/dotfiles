@@ -200,6 +200,12 @@ in
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
   home.file.".codex/AGENTS.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
+  # Codex's settings, the counterpart to .claude/settings.json above. Same rule
+  # applies: only this file and AGENTS.md under ~/.codex are managed. The rest -
+  # auth.json with the ChatGPT tokens, the sqlite state DBs, session rollouts -
+  # is machine-local and stays out of the repo.
+  home.file.".codex/config.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.codex/config.toml";
   home.file."AGENTS.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
   home.file."USER.md".source =

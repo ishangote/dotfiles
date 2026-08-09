@@ -157,6 +157,12 @@
       "alfred"      # installs "Alfred 5.app"
       "alt-tab"
       "claude"      # Anthropic's desktop app (NOT claude-code, see below)
+      # OpenAI's terminal coding agent. This IS the right way to install it,
+      # unlike claude-code below: `codex doctor` reports its own update action
+      # as `brew upgrade --cask codex`, so the CLI defers to Homebrew instead of
+      # replacing its own binary. Config lives in home/.codex/config.toml.
+      # It's a cask, not a formula - the artifact is a prebuilt bin/codex.
+      "codex"
       # Docker Desktop. The cask is "docker-desktop" - the plain "docker" cask
       # was renamed in 2025, and the "docker" *formula* is the CLI alone, which
       # would fight the app for /usr/local/bin/docker. The app ships the whole

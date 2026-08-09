@@ -1,0 +1,44 @@
+# Codex CLI - OpenAI's terminal coding agent.
+#
+# Only the settings that differ from Codex's defaults live here. Run
+# `codex doctor` to see the resolved configuration, auth and sandbox state, and
+# `codex --strict-config <cmd>` to make an unrecognized key here a hard error
+# rather than a silent no-op.
+#
+# This file is symlinked from the dotfiles repo, so edits here are live - Codex
+# reads it fresh at the start of each session, no rebuild needed.
+#
+# NOTE: only this file and AGENTS.md are symlinked, not the whole ~/.codex
+# directory. Codex keeps its sqlite state (state_*.sqlite, logs_*, goals_*,
+# memories_*, queue_*), session rollouts, and - most importantly - auth.json
+# with the ChatGPT tokens in that same directory. None of that belongs in git.
+
+# Same posture as Claude Code's permissions.defaultMode = "bypassPermissions"
+# in home/.claude/settings.json: one agent policy, one set of rules, no
+# per-harness surprises about what an agent may do without asking.
+#
+# These two are separate switches and both are load-bearing. approval_policy
+# governs whether Codex stops to ask; sandbox_mode governs what it can reach
+# when it doesn't. Setting only the first would leave the macOS seatbelt
+# sandbox on, and Codex would silently fail writes outside the workspace
+# instead of prompting for them - the worst of both.
+#
+# Verified with `CODEX_HOME=<tmp> codex --strict-config doctor`, which reports:
+#   approval policy    Never
+#   filesystem sandbox unrestricted
+#   network sandbox    enabled
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+# Deliberately NOT set here:
+#
+#   model  - left at Codex's default so it tracks whatever OpenAI ships as
+#            current. Pinning it here means editing this file every time the
+#            default moves, and silently sitting on a stale model until you do.
+#
+#   [update] version_check - unlike herdr, Codex detects that Homebrew owns it
+#            and reports its update action as `brew upgrade --cask codex`
+#            (confirmed in `codex doctor`), so its startup check points at the
+#            same package manager that configuration.nix declares. There is no
+#            binary for it to swap out from under Homebrew, so the herdr
+#            problem does not arise and the check stays on.

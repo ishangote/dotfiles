@@ -9,7 +9,19 @@
   "accessibility": {
     "highTextContrast": false
   },
-  "knownTags": {},
+  "knownTags": {
+    "ai-ml-llms": 1,
+    "comparison": 2,
+    "concept": 3,
+    "cost": 9,
+    "entity": 4,
+    "general-personal": 5,
+    "llm-wiki": 6,
+    "model-evaluation": 7,
+    "personal-projects": 10,
+    "source-summary": 8,
+    "web-hosting": 11
+  },
   "tagColors": {},
   "_version": 4
 }

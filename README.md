@@ -20,7 +20,8 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Open-at-login for Alfred, Magnet and Handy
 - VS Code settings, keybindings and extension list
 - Obsidian vault config for the llm-wiki vault
-- Agent config (Claude and Codex share one `AGENTS.md`)
+- Coding agents (Claude Code settings, Codex CLI and its settings) sharing one
+  `AGENTS.md` policy and one permission posture
 
 ## Fresh-machine setup
 
@@ -86,16 +87,13 @@ pull live runtime state into the repo.
 Run `./rebuild.sh` only when you change something that isn't a symlinked file:
 a package list, a shell alias, a macOS default.
 
-Only two files under `~/.claude` are managed (`settings.json` and
-`statusline-command.sh`). Everything else there - sessions, projects, history,
-`settings.local.json` - is machine-local runtime state and is left alone.
-
-That `settings.json` sets `permissions.defaultMode = "bypassPermissions"`, so
-every session starts in bypass mode with no permission prompts - deliberate, not
-an oversight. It's a setting rather than a `--dangerously-skip-permissions`
-alias so it holds for every entry point: shell, IDE extension, desktop app.
-`skipDangerousModePermissionPrompt` suppresses the one-time confirmation screen
-that mode would otherwise show on startup.
+The agent directories follow the same rule as herdr, for the same reason. Only
+named files are linked, never the directory: `settings.json` and
+`statusline-command.sh` under `~/.claude`, `config.toml` and `AGENTS.md` under
+`~/.codex`. Everything else in those directories - sessions, projects, history,
+`settings.local.json`, Codex's sqlite state DBs and its `auth.json` - is
+machine-local runtime state, and in `auth.json`'s case a live credential. See
+[Agents](#agents) for what the managed files actually set.
 
 ## Homebrew is declarative
 
@@ -113,7 +111,9 @@ spelled out under [App Store apps](#app-store-apps).
 Things deliberately left out of the brew lists:
 
 - `claude-code` cask - `claude` is the native installer at `~/.local/bin/claude`
-  and self-updates. The cask would be a second, competing install.
+  and self-updates. The cask would be a second, competing install. Note this is
+  *not* the case for Codex, which **is** declared as a cask and defers its own
+  updates back to brew - see [Agents](#agents).
 - `docker` formula and `docker-compose` - both ship inside Docker Desktop. The
   formula would also claim `/usr/local/bin/docker`, which the app owns.
 
@@ -482,6 +482,57 @@ rebuild, so a self-update leaves the declared version and the real one
 disagreeing. The background version check is off in the config for that reason.
 Upgrade with `brew upgrade herdr`. The separate `manifest_check` is left on: it
 refreshes agent-detection rules, not the binary.
+
+## Agents
+
+Two coding agents are set up here, Claude Code and Codex, and they are
+deliberately configured to behave the same way.
+
+**One policy file.** `home/AGENTS.md` is the canonical, harness-agnostic agent
+doctrine. Each harness gets a symlink to it under the name it looks for -
+`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, and `~/AGENTS.md` for everything
+else that reads that convention. `USER.md` and `OPINIONS.md` sit beside it in
+`~` because `AGENTS.md` references them by path and loads them on demand. Edit
+one file, every agent picks it up.
+
+**One permission posture.** Both are set to never ask and never sandbox:
+
+| | Claude Code | Codex |
+| --- | --- | --- |
+| File | `home/.claude/settings.json` | `home/.codex/config.toml` |
+| Prompting | `permissions.defaultMode = "bypassPermissions"` | `approval_policy = "never"` |
+| Containment | none available | `sandbox_mode = "danger-full-access"` |
+
+This is deliberate, not an oversight. On the Claude side it's a setting rather
+than a `--dangerously-skip-permissions` alias so it holds for every entry point -
+shell, IDE extension, desktop app - and `skipDangerousModePermissionPrompt`
+suppresses the one-time confirmation screen that mode would otherwise show on
+startup.
+
+On the Codex side the two keys are separate switches and both are load-bearing.
+`approval_policy` decides whether Codex stops to ask; `sandbox_mode` decides what
+it can reach when it doesn't. Setting only the first would leave the macOS
+seatbelt sandbox on, and Codex would silently fail writes outside the workspace
+rather than prompt for them - the worst of both. Check the resolved posture any
+time with `codex doctor`, which prints the approval policy and both sandbox
+states, and validate an edit to `config.toml` with
+`codex --strict-config doctor`, which turns an unrecognized key into a hard
+error instead of a silent no-op.
+
+**Both defer to their installer, but not the same one.** Codex is a declared
+cask and `codex doctor` reports its own update action as
+`brew upgrade --cask codex`, so `codex update` routes back to Homebrew rather
+than swapping the binary out from under it - the herdr problem doesn't arise, and
+its startup version check is left on. Claude Code is the opposite: it isn't in
+the brew lists at all, because `claude` is the native self-updating installer at
+`~/.local/bin/claude` and the `claude-code` cask would be a second, competing
+install. The `claude` cask that *is* declared is the desktop app, a different
+thing.
+
+**`codex login` is a manual step**, like signing into the App Store for
+`mas-apps.sh`. Codex stores ChatGPT tokens in `~/.codex/auth.json`, which is a
+credential and is neither symlinked nor committed. On a fresh machine run
+`codex login` once; `codex doctor` confirms it under `auth`.
 
 ## Docker
 
