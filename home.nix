@@ -91,7 +91,10 @@ in
     settings = {
       user = {
         name = "Ishan Gote";
-        email = "goteishan@gmail.com";
+        # GitHub's noreply address rather than the real one, so commits pushed
+        # from here don't publish a scrapeable inbox. GitHub still attributes
+        # them - the numeric prefix is the account ID, from Settings -> Emails.
+        email = "19831767+ishangote@users.noreply.github.com";
       };
       # VS Code stays the git editor for now. Switch to "nvim" once that's home.
       core.editor = "code --wait";

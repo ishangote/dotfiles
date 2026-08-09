@@ -4,3 +4,28 @@ result-*
 
 # Obsidian per-session pane layout, not a setting
 home/obsidian/config/workspace.json
+
+# Obsidian plugin and theme code, which belongs to its upstream authors, not
+# here. Only the settings are tracked: each plugin's data.json, plus
+# community-plugins.json and core-plugins.json. Obsidian re-downloads the code
+# from the community browser - see the Obsidian section of the README.
+home/obsidian/config/plugins/*/main.js
+home/obsidian/config/plugins/*/manifest.json
+home/obsidian/config/plugins/*/styles.css
+home/obsidian/config/plugins/*/reference-files/
+home/obsidian/config/themes/
+
+# The Alfred Powerpack license. It decodes to the registered email, the customer
+# number and the license key, so a copy is a usable license. Re-enter it from
+# your Alfred account instead.
+home/alfred/license/
+
+# Alfred's synced preferences bundle (~7 MB of workflows, hotkeys, snippets).
+# Alfred syncs into this directory, but workflows routinely embed API keys in
+# their own config, so none of it is tracked. See the Alfred section.
+home/alfred/Alfred.alfredpreferences/
+
+# Claude Code's per-machine overrides: scratchpad paths, permission grants.
+# Also covered by a global ignore on this machine, but a clone has no such
+# thing, so the rule belongs here too.
+.claude/settings.local.json

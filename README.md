@@ -158,6 +158,24 @@ Point a new vault at the shared config:
 For vaults you intend to keep, also add a line to `home.nix` (there's a
 commented template) so a fresh Mac wires them up without running the script.
 
+**Settings are tracked, plugin code is not.** What lives in git is
+`community-plugins.json` (which plugins are enabled), `core-plugins.json`, and
+each plugin's `data.json` (how it's configured) - the parts that are actually
+yours. Each plugin's `main.js`, `manifest.json` and `styles.css` belong to its
+upstream author and are gitignored, as is the Minimal theme.
+
+That's a licensing call, not a size one, though it does take the repo from 15 MB
+to under 1 MB. Redistributing someone's MIT-licensed build obliges you to ship
+their license and copyright notice with it, and only one of the twelve bundles
+here carries any license text at all. Vendoring them properly would mean
+fetching and re-syncing a dozen upstream `LICENSE` files by hand, forever.
+
+The cost is one manual step on a fresh Mac: Obsidian opens with the plugin list
+populated but the code missing, so install them once from
+`Settings -> Community plugins -> Browse`. Obsidian downloads into this repo's
+directory, where the ignore rules keep them out of git, and each plugin picks up
+its tracked `data.json` on first load.
+
 Notes:
 
 - Vault *notes* stay in their own repo. Only `.obsidian` lives here.
@@ -182,17 +200,19 @@ repo once, in the GUI:
 Alfred moves `Alfred.alfredpreferences` (~7 MB: workflows, themes, hotkeys,
 snippets) into the repo and reads from there afterwards. Nothing to rebuild.
 
-The Powerpack license is a separate file that Alfred's sync does **not** cover.
-A copy lives in `home/alfred/license/`. On a fresh Mac, either re-enter the
-license or copy it back:
+That bundle is **gitignored**, so Alfred syncs into the repo directory but
+nothing lands in git. Alfred workflows routinely carry API keys and tokens in
+their own configuration, and a public repo is no place for a 7 MB binary bundle
+that nobody re-reads before pushing. This is the one setting this repo
+deliberately does not version control - back the bundle up some other way.
 
-```sh
-cp home/alfred/license/powerpack.*.dat ~/Library/Application\ Support/Alfred/
-```
+Two files Alfred's sync does **not** cover, and neither is in this repo:
 
-This repo is private, which is the only reason that file is committed. **Do not
-make this repo public without removing it from git history first** - deleting the
-file in a later commit does not remove it from history.
+- The Powerpack license (`powerpack.*.dat`). It decodes to the registered email,
+  the customer number and the license key, so anyone with a copy could activate
+  Powerpack with it. Re-enter it from your Alfred account on a fresh Mac.
+- Anything under `~/Library/Application Support/Alfred/` that Alfred treats as
+  machine-local.
 
 ## Dock
 
@@ -404,9 +424,22 @@ into the profile's `Keyboard Map`. Merged, not replaced - any mapping already
 present wins, so this is safe to re-run.
 
 **Changing settings from here on:** edit them in the iTerm2 GUI as normal, then
-when prompted on quit, let it save changes back to the folder. Then commit the
-diff. If you edit the plist by hand instead, quit iTerm2 first - it writes its
-in-memory copy on exit and will overwrite you.
+when prompted on quit, let it save changes back to the folder. Then run
+
+```sh
+./scrub-iterm2-plist.sh
+```
+
+and commit the diff. If you edit the plist by hand instead, quit iTerm2 first -
+it writes its in-memory copy on exit and will overwrite you.
+
+That scrub step is not optional. iTerm2 rewrites the whole file on every quit,
+and two of the keys it writes are machine fingerprints rather than settings:
+`NSOSPLastRootDirectory`, a macOS bookmark blob that embeds the boot volume's
+UUID, and `NoSyncInstallationId`, a per-install UUID. Neither changes how iTerm2
+behaves, and both come back on their own, which is why this is a script and not
+a note. `./scrub-iterm2-plist.sh --check` exits non-zero if either is present,
+so it drops straight into a pre-commit hook.
 
 Why the plist and not `defaults`: key mappings are a nested dictionary inside the
 `New Bookmarks` profile array. Writing that through `defaults` replaces the whole
@@ -519,6 +552,16 @@ states, and validate an edit to `config.toml` with
 `codex --strict-config doctor`, which turns an unrecognized key into a hard
 error instead of a silent no-op.
 
+> **If you're copying this, copy it knowingly.** Between them these settings
+> remove every guardrail both agents ship with: an agent can delete files, run
+> arbitrary commands, and reach the network anywhere the user account can, with
+> no prompt and no sandbox. The trade is defensible *here* - a single-user
+> personal Mac, everything in this repo reproducible from git, nothing
+> production-adjacent on the machine, and a user who reads what the agent
+> proposes. It is a bad trade on a shared box, on anything holding credentials
+> you can't rotate, or anywhere the blast radius reaches past you. Both defaults
+> exist for a reason; know which reason you're overriding.
+
 **Both defer to their installer, but not the same one.** Codex is a declared
 cask and `codex doctor` reports its own update action as
 `brew upgrade --cask codex`, so `codex update` routes back to Homebrew rather
@@ -565,6 +608,20 @@ activation doesn't have. They're listed so it's clear they were considered:
 - **Safari's own settings.** TCC-protected container, see below.
 - **iTerm2 / Alfred key mappings and prefs** - handled through each app's own
   preferences-folder mechanism instead, see above.
+
+And a few things left out on purpose rather than for want of a mechanism. This
+repo is public, and each of these is either someone else's to distribute or
+nobody's business but this machine's:
+
+- **Obsidian plugin and theme code.** Settings are tracked, the upstream builds
+  aren't - see [Obsidian](#obsidian). Install them once from the community
+  browser on a fresh Mac.
+- **Alfred's `Alfred.alfredpreferences` bundle** and the **Powerpack license** -
+  see [Alfred](#alfred).
+- **Agent credentials and runtime state**: `~/.codex/auth.json`, session
+  history, `settings.local.json` - see [Agents](#agents).
+- **Two machine-fingerprint keys iTerm2 writes into its plist**, stripped by
+  `./scrub-iterm2-plist.sh` - see [iTerm2](#iterm2).
 
 ## App Store apps
 
