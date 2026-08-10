@@ -13,6 +13,17 @@
   };
   system.stateVersion = 6;
 
+  # Codex's agent policy. It has to sit in /etc rather than under ~/.codex,
+  # because Codex owns ~/.codex/config.toml and rewrites it from scratch on
+  # every settings change, dropping whatever it does not recognise. See the
+  # comments in the file itself for the full story.
+  #
+  # readFile rather than `.source`, because handing nix-darwin's /etc derivation
+  # a flake source path makes it warn that the reference has no string context
+  # and is unreliable. Embedding the text sidesteps that.
+  environment.etc."codex/managed_config.toml".text =
+    builtins.readFile ./etc/codex/managed_config.toml;
+
   system.defaults = {
     NSGlobalDomain = {
       AppleInterfaceStyle = "Dark";

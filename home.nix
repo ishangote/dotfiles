@@ -215,12 +215,13 @@ in
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
   home.file.".codex/AGENTS.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
-  # Codex's settings, the counterpart to .claude/settings.json above. Same rule
-  # applies: only this file and AGENTS.md under ~/.codex are managed. The rest -
-  # auth.json with the ChatGPT tokens, the sqlite state DBs, session rollouts -
-  # is machine-local and stays out of the repo.
-  home.file.".codex/config.toml".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.codex/config.toml";
+  # Only AGENTS.md under ~/.codex is managed. config.toml deliberately is not:
+  # Codex rewrites that file from scratch whenever a setting changes in the TUI,
+  # which replaced the symlink with a regular file and aborted activation. Its
+  # agent policy moved to /etc/codex/managed_config.toml, declared in
+  # configuration.nix, where Codex cannot overwrite it. What is left in
+  # ~/.codex/config.toml is model, reasoning effort and per-project trust, which
+  # Codex should be free to change - the counterpart to settings.local.json.
   home.file."AGENTS.md".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
   home.file."USER.md".source =

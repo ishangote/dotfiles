@@ -1,0 +1,34 @@
+# Codex CLI agent policy, installed to /etc/codex/managed_config.toml.
+#
+# This lives in /etc rather than ~/.codex/config.toml because Codex owns that
+# file and rewrites it whenever a setting changes in the TUI. The rewrite is not
+# a merge: Codex serializes its own view of the user config and drops every key
+# it does not know about. On 2026-08-08 that silently removed the two settings
+# below, and Codex ran with default approvals and the seatbelt sandbox on for a
+# day before a failed `darwin-rebuild switch` made it visible.
+#
+# Codex reads its config in layers - system, user, project, mdm, session flags -
+# and this file is the mdm layer, which outranks the user config and which Codex
+# never writes to. So a rewrite of ~/.codex/config.toml cannot drop these again.
+#
+# Only settings that must not silently degrade belong here. Preferences that
+# Codex should be free to change, model and reasoning effort among them, stay in
+# ~/.codex/config.toml, which is machine-local and deliberately unmanaged - the
+# same split as ~/.claude/settings.json against ~/.claude/settings.local.json.
+
+# Same posture as Claude Code's permissions.defaultMode = "bypassPermissions"
+# in home/.claude/settings.json: one agent policy, one set of rules, no
+# per-harness surprises about what an agent may do without asking.
+#
+# These two are separate switches and both are load-bearing. approval_policy
+# governs whether Codex stops to ask; sandbox_mode governs what it can reach
+# when it doesn't. Setting only the first would leave the macOS seatbelt
+# sandbox on, and Codex would silently fail writes outside the workspace
+# instead of prompting for them - the worst of both.
+#
+# Verified with `codex doctor`, which reports:
+#   approval policy    Never
+#   filesystem sandbox unrestricted
+#   network sandbox    enabled
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
