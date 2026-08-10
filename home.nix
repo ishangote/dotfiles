@@ -22,6 +22,7 @@ in
     tree
     htop
     neovim
+    git-lfs   # was pulled in by programs.git.lfs.enable, see below
     # the font everything renders in
     nerd-fonts.fira-code
   ];
@@ -98,8 +99,19 @@ in
       };
       # VS Code stays the git editor for now. Switch to "nvim" once that's home.
       core.editor = "code --wait";
+      # These are what `programs.git.lfs.enable` would generate, except it bakes
+      # the absolute /nix/store path of the binary into each command. GitHub
+      # Desktop compares them literally against "git-lfs clean -- %f" and warns
+      # on every operation, so name the binary and let PATH resolve it - Desktop
+      # then picks up its own bundled copy. lfs.enable stays off because it would
+      # define these same keys a second time; git-lfs is in home.packages instead.
+      filter.lfs = {
+        clean = "git-lfs clean -- %f";
+        smudge = "git-lfs smudge -- %f";
+        process = "git-lfs filter-process";
+        required = true;
+      };
     };
-    lfs.enable = true;
     ignores = [ "**/.claude/settings.local.json" ];
   };
 
