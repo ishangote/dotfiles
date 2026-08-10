@@ -45,7 +45,7 @@ There are four distinct mechanisms. Know which one applies before you promise a 
 
 | Mechanism | Files | How it takes effect |
 | --- | --- | --- |
-| Live symlink | `home/.config/**`, `home/.claude/**`, `home/.pi/agent/**`, `home/vscode/{settings,keybindings}.json`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
+| Live symlink | `home/.config/**`, `home/.claude/**`, `home/.pi/agent/**`, `home/vscode/{settings,keybindings}.json`, `home/vscode/profiles/**`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
 | Nix rebuild | `flake.nix`, `flake.lock`, `configuration.nix`, `home.nix`, `etc/codex/managed_config.toml` | `./rebuild.sh` |
 | Script, run by hand | `home/vscode/extensions.txt`, `home/mas/apps.tsv`, `home/macos-prefs/*.plist` | The matching `./*.sh` command |
 | Manual, no automation exists | `home/finder/favorites.tsv` | Drag into Finder's sidebar by hand |
@@ -58,8 +58,11 @@ Reload nudges for the live-symlink tier:
 - herdr's running server does **not** reload: press `prefix+shift+r` or run `herdr server reload-config`.
 - Claude Code reads `settings.json` at session start.
 - Pi needs `/reload` inside a running session after a theme or extension edit.
-- VS Code applies settings immediately.
+- VS Code applies settings immediately. Untested for the per-profile files under `home/vscode/profiles/`, so switch profiles or restart if one does not take.
 - iTerm2 loads its plist from this repo directly, but rewrites the whole file on quit.
+
+`home/vscode/profiles/**` is the one live-symlink path home-manager does not create.
+The symlinks are made by `./vscode-profiles.sh link` and the reason is in that script's header: a profile's directory name is random per creation, so it cannot be written into `home.nix`.
 
 `etc/codex/managed_config.toml` is the odd one out in the nix tier: `configuration.nix` reads it with `builtins.readFile` and embeds the text into an `/etc` derivation, so a rebuild is required even though the file looks like plain config.
 It cannot be a symlink, and that is deliberate.
@@ -117,6 +120,7 @@ All three have to match.
 | `bootstrap.sh` | One-time fresh-Mac setup: install Nix, symlink the repo to `~/.dotfiles`, reconcile the username, back up conflicting hand-written config, run the first switch. |
 | `rebuild.sh` | Everything after that. `sudo darwin-rebuild switch --flake ~/.dotfiles#mac`. |
 | `vscode-extensions.sh` | `install` / `save` / `diff` against `home/vscode/extensions.txt`. |
+| `vscode-profiles.sh` | `save` / `link` / `status` for named VS Code profiles, whose settings `home.nix` cannot declare. Resolves the profile's directory from VS Code's `storage.json` at run time, because the name is random per creation. |
 | `mas-apps.sh` | `install` / `status` / `save` against `home/mas/apps.tsv`. Exists because `homebrew.masApps` cannot reach the App Store daemon from nix-darwin's activation namespace. |
 | `macos-prefs.sh` | `export` / `import` / `diff` for plist-backed app preferences. Add a `domain:App Name` line to `DOMAINS` to cover another app. |
 | `obsidian-vault.sh` | Point one vault's `.obsidian` at the shared config. One-off counterpart to the declarations in `home.nix`. |
@@ -143,7 +147,8 @@ All print usage from their own header comment when called with no argument.
 | `home/AGENTS.md` | The global agent policy, shared by Claude Code and Codex | symlink (three targets) |
 | `home/USER.md` | Who the user is. Loaded on demand by `AGENTS.md`. | symlink |
 | `home/OPINIONS.md` | Durable engineering opinions. Loaded on demand by `AGENTS.md`. | symlink |
-| `home/vscode/settings.json`, `keybindings.json` | VS Code. JSONC: comments and trailing commas, so plain `jq` will not parse them. | symlink |
+| `home/vscode/settings.json`, `keybindings.json` | VS Code's **default profile**. JSONC: comments and trailing commas, so plain `jq` will not parse them. | symlink |
+| `home/vscode/profiles/<name>/{settings,keybindings}.json` | The named VS Code profiles, `igote-dev-cpp` and `igote-dev-python`. Also JSONC. One directory per profile, named after the profile rather than after VS Code's own random directory. | `./vscode-profiles.sh link` |
 | `home/vscode/extensions.txt` | Extension list, one id per line | `./vscode-extensions.sh install` |
 | `home/obsidian/config/` | Shared `.obsidian` for every vault: `appearance.json`, `core-plugins.json`, `community-plugins.json`, `graph.json`, `plugins/*/data.json` | symlink (dir) |
 | `home/iterm2/com.googlecode.iterm2.plist` | Entire iTerm2 preferences, stored as XML for readable diffs | iTerm2's own custom-prefs-folder mechanism |
@@ -209,8 +214,13 @@ stat -f %Sm ~/.zcompdump; zsh -ic exit; stat -f %Sm ~/.zcompdump
 # JSON (strict): Claude settings, Obsidian config, lazy-lock
 jq -e . home/.claude/settings.json
 
-# JSONC (VS Code): has comments and trailing commas, plain jq FAILS by design.
-# Validate by loading it in VS Code, not with jq.
+# JSONC (VS Code, both the default profile and everything under
+# home/vscode/profiles/): has comments and trailing commas, plain jq FAILS by
+# design. Validate by loading it in VS Code, not with jq.
+
+# VS Code profile symlinks. Must print "linked" for every file; anything else
+# means the repo copy and the live copy have parted ways.
+./vscode-profiles.sh status
 
 # Plists
 plutil -lint home/iterm2/com.googlecode.iterm2.plist home/macos-prefs/*.plist
@@ -278,6 +288,7 @@ They are listed so their absence reads as a decision, not an omission.
 - Obsidian community plugins: install once from the community browser on a fresh Mac; the tracked `data.json` files then apply.
 - Alfred: point its sync folder at `~/.dotfiles/home/alfred` once, in Alfred Preferences.
 - VS Code Settings Sync must stay **off**, or it periodically overwrites `settings.json` from the cloud and silently reverts repo edits.
+- VS Code profiles: create `igote-dev-cpp` and `igote-dev-python` once from the GUI, then run `./vscode-profiles.sh link`. Only the GUI can register a profile, and VS Code assigns its directory a fresh random name each time, which is why the link step cannot happen during a rebuild.
 - `codex login` once; `codex doctor` confirms it.
 - Pi is installed from npm, not Nix or Homebrew: `npm install -g --ignore-scripts @earendil-works/pi-coding-agent`, then authenticate with `pi auth`.
 - Docker Desktop's first launch needs an admin password for its privileged helper.

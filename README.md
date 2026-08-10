@@ -19,7 +19,8 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Apps (VS Code, Obsidian, Claude desktop, Docker Desktop, Numi, Alfred, AltTab, Magnet, Handy, iTerm2)
 - Alfred preferences, AltTab settings
 - Open-at-login for Alfred, Magnet and Handy
-- VS Code settings, keybindings and extension list
+- VS Code settings, keybindings and extension list, for the default profile and
+  for the two named profiles
 - Obsidian vault config for the igote-workspace vault
 - Coding agents (Claude Code settings, Codex CLI and its settings) sharing one
   `AGENTS.md` policy and one permission posture
@@ -90,6 +91,11 @@ pull live runtime state into the repo.
 `~/.config/zsh/rc.zsh` is linked the same way, as a single file rather than the
 directory, because `~/.config/zsh` is where a future `ZDOTDIR` would put the
 history file and the completion dump, and neither belongs in a public repo.
+
+The VS Code *profile* settings are the one set of live symlinks `home.nix` does
+not create. A profile's directory name is random per creation, so it cannot be
+written into a Nix file at all; `./vscode-profiles.sh link` resolves it at run
+time instead. See [Profiles](#profiles).
 
 Run `./rebuild.sh` only when you change something that isn't a symlinked file:
 a package list, a shell alias, a macOS default.
@@ -249,6 +255,40 @@ them. They're tracked as a plain list instead:
 ```
 
 Install something from the GUI, then run `save` and commit the diff.
+
+### Profiles
+
+A VS Code profile has its own `settings.json` and `keybindings.json`, which the
+default profile's files do not cover. There are two here, `igote-dev-cpp` and
+`igote-dev-python`, and they are tracked under `home/vscode/profiles/<name>/`.
+
+They are not declared in `home.nix` like the default profile is, because a
+profile's directory is not named after the profile and is not derivable from it.
+`igote-dev-cpp` lives in `profiles/-3a41f61b`, and that is not a hash of the name
+either - VS Code's own `hash("igote-dev-cpp").toString(16)` is `7cad4157`. The
+name is random per creation. Hardcoding one would work on this machine and
+silently point at nothing on a fresh one, so the location is looked up at run
+time in VS Code's own `globalStorage/storage.json`:
+
+```sh
+./vscode-profiles.sh save     # copy live profile settings into this repo
+./vscode-profiles.sh link     # symlink the repo copies back over the live files
+./vscode-profiles.sh status   # show what is linked, what drifted
+```
+
+After `link` the profile files are live symlinks into this repo, exactly like the
+default profile's, so GUI edits write straight back. `save` is only for adopting a
+profile in the first place, or re-adopting one after recreating it in the GUI - it
+refuses to run on a file that is already linked, which would otherwise copy the
+file over itself.
+
+On a fresh Mac the profiles have to be created from the GUI first, since nothing
+else can register one, and then `link` wires them up.
+
+`profiles/<name>/extensions.json` is deliberately not tracked. VS Code writes
+absolute paths, versions and install timestamps into it, which makes it machine
+state rather than settings, and `extensions.txt` already records which extensions
+are wanted.
 
 ## Obsidian
 

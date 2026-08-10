@@ -310,6 +310,14 @@ in
   # IMPORTANT: VS Code Settings Sync must stay OFF. If it is on, it periodically
   # overwrites settings.json from the cloud copy and silently reverts repo edits.
   # Extensions are not managed here - see ./vscode-extensions.sh.
+  #
+  # These two are the *default* profile only. Named profiles keep their own
+  # settings.json and keybindings.json and cannot be declared here: a profile's
+  # directory is not named after the profile and is not derivable from it either
+  # (igote-dev-cpp lives in profiles/-3a41f61b, while VS Code's own
+  # hash("igote-dev-cpp").toString(16) is 7cad4157), so the location is random per
+  # creation. Hardcoding one would work here and silently point at nothing on a
+  # fresh Mac. ./vscode-profiles.sh resolves it at run time instead.
   home.file."Library/Application Support/Code/User/settings.json".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/vscode/settings.json";
   home.file."Library/Application Support/Code/User/keybindings.json".source =
