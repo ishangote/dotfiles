@@ -100,7 +100,7 @@ All print usage from their own header comment when called with no argument.
 | `home/.config/nvim/` | Neovim: `init.lua`, `lua/vim_config.lua`, `lua/keys.lua`, `lua/plugin.lua` (lazy.nvim bootstrap), `lua/plugins/*.lua`, `lazy-lock.json` | symlink (dir) |
 | `home/.config/herdr/config.toml` | herdr agent multiplexer: theme overrides, tmux-style prefix map, mouse and copy behaviour, update policy | symlink (file only) |
 | `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `high`, status line, plugin toggles | symlink |
-| `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage, rate limits | symlink |
+| `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage | symlink |
 | `home/AGENTS.md` | The global agent policy, shared by Claude Code and Codex | symlink (three targets) |
 | `home/USER.md` | Who the user is. Loaded on demand by `AGENTS.md`. | symlink |
 | `home/OPINIONS.md` | Durable engineering opinions. Loaded on demand by `AGENTS.md`. | symlink |
