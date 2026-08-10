@@ -19,7 +19,6 @@
     "workbench.activityBar.visible",
     "workbench.sideBar.location",
     "workbench.panel.defaultLocation",
-    "todo-tree.general.showActivityBarBadge",
     "bookmarks.saveBookmarksInProject",
   ],
   // === Copilot ===
@@ -82,22 +81,5 @@
   ],
   // === Bookmarks ===
   "bookmarks.saveBookmarksInProject": true,
-  // === Todo Tree ===
-  "todo-tree.general.tags": [
-    "TODO",
-    "FIXME",
-    "NOTE"
-  ],
-  "todo-tree.highlights.enabled": false, // disable inline highlights completely
-  "todo-tree.tree.showBadges": true,
-  "todo-tree.tree.showCountsInTree": true,
-  "todo-tree.filtering.excludeGlobs": [
-    "**/node_modules/**",
-    "**/dist/**",
-    "**/build/**",
-    "**/.venv/**",
-    "**/__pycache__/**"
-  ],
-  "todo-tree.general.showActivityBarBadge": true,
   "window.newWindowProfile": "Default",
 }
