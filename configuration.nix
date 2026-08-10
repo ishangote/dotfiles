@@ -13,6 +13,35 @@
   };
   system.stateVersion = 6;
 
+  # Let home-manager own the shell completely. nix-darwin's generated /etc/zshrc
+  # otherwise runs, by default, three things nobody asked for:
+  #
+  #   autoload -U promptinit && promptinit && prompt suse && setopt prompt_sp
+  #   autoload -U compinit && compinit
+  #   autoload -U bashcompinit && bashcompinit
+  #
+  # The prompt theme is pure waste - starship replaces it fifteen lines later in
+  # ~/.zshrc. The compinit is worse than waste. home-manager runs compinit again
+  # in ~/.zshrc after extending fpath, the two runs disagree about
+  # ~/.zcompdump, and the dump is therefore rebuilt from scratch on every single
+  # interactive shell: every tab, every split, every herdr pane.
+  #
+  # Measured on this machine before the fix, where NOSYSZSHRC=1 skips /etc/zshrc
+  # and changes nothing else:
+  #
+  #   zsh -ic exit                 0.77s
+  #   NOSYSZSHRC=1 zsh -ic exit    0.06s
+  #
+  # Confirmed as the dump specifically by watching its mtime advance on each
+  # launch with /etc/zshrc active and stay frozen without it, and by a
+  # `zsh -xic exit` trace whose 175k lines are dominated by compdump.
+  #
+  # home-manager's programs.zsh.enableCompletion still runs compinit, once,
+  # which is all that was ever wanted.
+  programs.zsh.enableCompletion = false;
+  programs.zsh.enableBashCompletion = false;
+  programs.zsh.promptInit = "";
+
   # Codex's agent policy. It has to sit in /etc rather than under ~/.codex,
   # because Codex owns ~/.codex/config.toml and rewrites it from scratch on
   # every settings change, dropping whatever it does not recognise. See the

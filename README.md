@@ -10,8 +10,9 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Dock contents and behaviour
 - System keyboard shortcuts, including Spotlight's Cmd+Space disabled for Alfred
 - Homebrew formulae and casks, declared rather than installed ad hoc
-- Nix user packages (ripgrep, fd, fzf, jq, bat, eza, zoxide, lazygit, tree, htop, Neovim, Fira Code Nerd Font)
-- Shell (zsh, aliases, starship prompt)
+- Nix user packages (ripgrep, fd, fzf, jq, bat, eza, zoxide, direnv, delta, lazygit, tree, htop, Neovim, Fira Code Nerd Font)
+- Shell (zsh, aliases, starship prompt, fuzzy history search, per-project
+  environments via direnv) - see [Shell](#shell)
 - Editor (Neovim with the rose-pine moon theme)
 - Terminal (WezTerm with the rose-pine moon theme)
 - Agent multiplexer (herdr, themed to match)
@@ -70,6 +71,8 @@ Edit the config files in place, then apply:
 - `configuration.nix` - system-level: macOS defaults, Homebrew lists.
 - `home.nix` - user-level: shell, packages, prompt, git, and the symlinks below.
 - `home/` - the actual config files that get symlinked into place.
+- `home/.config/zsh/rc.zsh` - the hand-written half of the shell. The other half
+  is declared in `home.nix`; see [Shell](#shell) for which is which.
 - `bootstrap.sh` - one-time setup. `rebuild.sh` - everything after that.
 
 ## How the symlinks work
@@ -84,6 +87,10 @@ herdr is the exception to the directory-shaped ones: only
 socket and session state in that same directory, and linking the directory would
 pull live runtime state into the repo.
 
+`~/.config/zsh/rc.zsh` is linked the same way, as a single file rather than the
+directory, because `~/.config/zsh` is where a future `ZDOTDIR` would put the
+history file and the completion dump, and neither belongs in a public repo.
+
 Run `./rebuild.sh` only when you change something that isn't a symlinked file:
 a package list, a shell alias, a macOS default.
 
@@ -94,6 +101,104 @@ named files are linked, never the directory: `settings.json` and
 `settings.local.json`, Codex's sqlite state DBs and its `auth.json` - is
 machine-local runtime state, and in `auth.json`'s case a live credential. See
 [Agents](#agents) for what the managed files actually set.
+
+## Shell
+
+zsh, with starship for the prompt.
+
+### There is no `.zshrc` in this repo
+
+`~/.zshrc` is a symlink into `/nix/store`. home-manager generates it from the
+`programs.zsh` block in `home.nix` and owns the file completely, so there is
+nothing to check in and nothing to hand-edit - an edit to `~/.zshrc` would be
+overwritten by the next `./rebuild.sh`, assuming it were writable at all.
+
+That makes the shell the one config here that is *not* live-on-save, which
+routinely catches people out, since nvim, WezTerm and the agent policy all are.
+
+The compromise is a split. Anything home-manager has an option for stays
+declarative in `home.nix`; everything else lives in a real file in this repo:
+
+| Half | Where | What goes there | Applying a change |
+| --- | --- | --- | --- |
+| Declarative | `home.nix` | aliases, history, plugins, prompt, PATH, named directories | `./rebuild.sh` |
+| Hand-written | `home/.config/zsh/rc.zsh` | key bindings, functions, completion styles | save the file, open a new shell |
+
+`rc.zsh` is symlinked to `~/.config/zsh/rc.zsh` and sourced from the tail of the
+generated `~/.zshrc`, behind a guard that warns on stderr rather than failing if
+the file has gone missing. An unguarded `source` of a missing file aborts the
+rest of `~/.zshrc` on every shell, and a shell that will not start takes the
+coding agents down with it.
+
+The rule of thumb: if `home.nix` can express it, put it there. Doing it in
+`rc.zsh` instead works, but it hides the setting from `nix eval` and from anyone
+reading the config, and both halves need the same rebuild for anything that
+touches PATH anyway.
+
+### Why `/etc/zshrc` is deliberately stripped
+
+`configuration.nix` turns three nix-darwin defaults off:
+
+```nix
+programs.zsh.enableCompletion = false;
+programs.zsh.enableBashCompletion = false;
+programs.zsh.promptInit = "";
+```
+
+Left on, nix-darwin's generated `/etc/zshrc` runs `compinit`, `bashcompinit` and
+the SUSE prompt theme. The prompt theme is harmless waste, replaced by starship
+fifteen lines later in `~/.zshrc`. The `compinit` is not harmless: home-manager
+runs `compinit` again in `~/.zshrc` after extending `fpath`, the two runs
+disagree about `~/.zcompdump`, and the dump is rebuilt from scratch on *every
+interactive shell* - every tab, every split, every herdr pane.
+
+Measured on this machine, where `NOSYSZSHRC=1` skips `/etc/zshrc` and changes
+nothing else:
+
+```
+zsh -ic exit                 0.77s
+NOSYSZSHRC=1 zsh -ic exit    0.06s
+```
+
+Confirmed as the completion dump specifically by watching `~/.zcompdump`'s mtime
+advance on each launch with `/etc/zshrc` active and stay frozen without it.
+home-manager still runs `compinit`, once, which was all that was ever wanted.
+
+### What the shell gives you
+
+- **Autosuggestion** from history as ghost text, accepted with **Ctrl+F**.
+- **Syntax highlighting** - commands turn green when they resolve.
+- **Substring history search** on **Up** and **Down**: type `git com`, press Up,
+  and only matching entries are cycled. Bound for both the normal and
+  application cursor-mode encodings, because which one the terminal sends
+  depends on whether the line editor has switched modes.
+- **100k lines of history**, timestamped, deduplicated across the whole file,
+  shared live between panes. `rm *` and `kill *` are never recorded.
+- **fzf**, backed by `fd` rather than `find`, so **Ctrl+T** and **Alt+C** respect
+  `.gitignore` and skip `.git`. Ctrl+T previews through bat.
+- **zoxide** - `z <fragment>` jumps to a frecent directory.
+- **eza** aliased over `ls`, `ll`, `la`, `lla` and `lt`, with icons, a git
+  status column and directories grouped first.
+- **bat** as the pager for `cat` and for `man`.
+- **delta** as git's pager, with line numbers and `n`/`N` to move between files.
+- **direnv**, with nix-direnv, so a repo with an `.envrc` gets its own toolchain
+  on `cd` and gives it back on the way out.
+- **Named directories**: `~dot` is this repo, `~dev` and `~ws` the two working
+  trees. They expand anywhere a path does, including in the prompt.
+- Aliases `..`, `add`, `push`, `pull`, `m` (switch to main) and `cc` (Claude).
+
+### Homebrew comes first on PATH
+
+`brew shellenv` prepends, so `/opt/homebrew/bin` sits ahead of every Nix path
+and Homebrew wins any name collision. Read the current order with:
+
+```sh
+zsh -ilc 'print -l $path'
+```
+
+Nothing overlaps today. The rule that keeps it that way: a tool belongs in
+`home.packages` **or** in `brews`, never both. The day something is in both, the
+Nix copy silently stops being the one that runs, and nothing warns you.
 
 ## Homebrew is declarative
 

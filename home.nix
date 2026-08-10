@@ -9,15 +9,18 @@ in
   home.homeDirectory = "/Users/${user}";
   home.stateVersion = "26.05";
 
+  # Only tools that are nothing but a binary on PATH belong here. Anything with
+  # a `programs.<name>` module goes through the module instead - it installs the
+  # same package AND wires up the shell integration, which is the part that was
+  # missing. fzf, bat, eza and zoxide were all listed here as well; fzf and
+  # zoxide were plain duplicates of their modules, and bat and eza had no module
+  # at all, so nothing ever aliased `ls` or the pager to them and both went
+  # unused.
   home.packages = with pkgs; [
     # cli i use constantly
     ripgrep   # fast search
-    fd        # fast find
-    fzf       # fuzzy finder
+    fd        # fast find, and what fzf shells out to - see programs.fzf below
     jq        # json on the command line
-    bat       # cat with syntax highlighting
-    eza       # modern ls
-    zoxide    # smarter cd, replaces the oh-my-zsh `z` plugin
     lazygit
     tree
     htop
@@ -29,6 +32,11 @@ in
   fonts.fontconfig.enable = true;
 
   home.sessionVariables.EDITOR = "nvim";
+
+  # `man` through bat, so man pages get the same syntax colouring as everything
+  # else. `col -bx` strips the overstrike backspace sequences roff emits for
+  # bold and underline, which bat would otherwise render literally.
+  home.sessionVariables.MANPAGER = "sh -c 'col -bx | bat -l man -p'";
 
   # node comes from `nix profile install nixpkgs#nodejs_22`, so npm's default
   # global prefix is that read-only store path and `npm install -g` fails
@@ -48,18 +56,74 @@ in
     # /opt/homebrew/bin is NOT in /etc/paths on Apple Silicon, so without this
     # every brew binary (tectonic, gh, cmake, ...) drops off PATH the moment the
     # old hand-written ~/.zprofile is replaced.
+    #
+    # Note that `brew shellenv` PREPENDS. /opt/homebrew/bin therefore sits ahead
+    # of every Nix path - ~/.nix-profile/bin, /etc/profiles/per-user/<user>/bin,
+    # /run/current-system/sw/bin - and Homebrew wins every name collision.
+    # Read off this machine with `zsh -ilc 'print -l $path'`.
+    #
+    # The rule that follows: a tool goes in `home.packages` or in `brews`, never
+    # both. Today nothing overlaps. The day something does, the Nix copy silently
+    # stops being the one that runs and nothing warns you.
+    #
+    # nix-darwin's generated /etc/zshrc runs `brew shellenv` a second time for
+    # interactive shells. That is a duplicate but not a redundancy: this one
+    # covers login shells, which /etc/zshrc does not, so it stays.
     profileExtra = ''
       eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
+    # Everything hand-written moved to home/.config/zsh/rc.zsh, which is a real
+    # file in this repo symlinked to ~/.config/zsh/rc.zsh (declared below), so
+    # shell code is editable without a rebuild like every other config here.
+    # That file explains what belongs in it and what belongs up here.
+    #
+    # The guard is deliberate. A missing file would otherwise abort the rest of
+    # ~/.zshrc on every single shell, and a shell that cannot start takes the
+    # agents down with it. Loud, not silent: it says which invariant broke.
     initContent = ''
-      bindkey '^f' autosuggest-accept
-
-      # carried over from the old .zshrc: alt-arrow word motion
-      bindkey "\e\eOD" backward-word
-      bindkey "\e\eOC" forward-word
-
-      setopt share_history
+      if [[ -r "$HOME/.config/zsh/rc.zsh" ]]; then
+        source "$HOME/.config/zsh/rc.zsh"
+      else
+        print -u2 "zsh: ~/.config/zsh/rc.zsh is missing - is this repo still symlinked at ~/.dotfiles?"
+      fi
     '';
+    history = {
+      size = 100000;
+      save = 100000;
+      # Timestamps and durations per entry. home-manager forces
+      # NO_EXTENDED_HISTORY otherwise, which leaves no record of *when* anything
+      # ran - and since share_history (a home-manager default, already on)
+      # merges every herdr pane into one file, the timestamps are the only thing
+      # that makes the interleaved result readable afterwards.
+      extended = true;
+      # Keep only the most recent copy of a repeated command anywhere in the
+      # file, not just consecutively. ignoreDups and ignoreSpace are already on
+      # by default and are not restated here.
+      ignoreAllDups = true;
+      # Destructive one-offs, never worth resurrecting with a stray Up.
+      ignorePatterns = [ "rm *" "kill *" ];
+    };
+    # Up/Down search history for entries matching what is already on the line,
+    # instead of walking it blindly. Complements the autosuggestion on ^f rather
+    # than replacing it: that completes one entry inline, this cycles matches.
+    #
+    # Both encodings of each arrow are bound. Terminals send ^[[A in normal
+    # cursor mode and ^[OA in application mode, and which one arrives depends on
+    # whether the line editor has switched the terminal over; home-manager's
+    # default binds only the first.
+    historySubstringSearch = {
+      enable = true;
+      searchUpKey = [ "^[[A" "^[OA" ];
+      searchDownKey = [ "^[[B" "^[OB" ];
+    };
+    # Named directories. `~dot` expands anywhere a path is expected - cd,
+    # completion, and the prompt, which shortens the displayed path to match.
+    # An alias would only work as the first word of a command.
+    dirHashes = {
+      dot = dotfiles;
+      dev = "${config.home.homeDirectory}/igote-dev";
+      ws = "${config.home.homeDirectory}/igote-workspace";
+    };
     shellAliases = {
       ".." = "cd ..";
       add = "git add .";
@@ -77,17 +141,83 @@ in
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+    # Without these, fzf shells out to plain `find`, which descends into
+    # node_modules and .git and ignores .gitignore entirely - so Ctrl+T in a
+    # node repo spends most of its time somewhere useless. `fd` does all three
+    # correctly and is already installed above; this is the reason it is there.
+    # Confirmed unset before this was added, with
+    #   zsh -ic 'echo "[$FZF_DEFAULT_COMMAND]"'
+    # which printed an empty pair of brackets.
+    defaultCommand = "fd --type f --hidden --exclude .git";
+    fileWidgetCommand = "fd --type f --hidden --exclude .git";
+    changeDirWidgetCommand = "fd --type d --hidden --exclude .git";
+    # Preview the file under the cursor in Ctrl+T. Capped at 200 lines because
+    # the preview pane cannot show more and bat would colour the whole file.
+    fileWidgetOptions = [
+      "--preview 'bat --color=always --style=numbers --line-range=:200 {}'"
+    ];
   };
   programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
   };
 
+  # eza and bat were both in home.packages with nothing pointing at them, so
+  # `ls` was still BSD ls and bat only ran when typed by name. These modules
+  # install the same binaries and define the integration in one place.
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = true;  # defines ls, ll, la, lla and lt
+    icons = "auto";               # only when stdout is a terminal
+    git = true;                   # per-file git status column in listings
+    extraOptions = [ "--group-directories-first" ];
+  };
+  programs.bat = {
+    enable = true;
+    # base16 is the closest thing bat ships to the rose-pine palette everything
+    # else here uses. Read the full list with `bat --list-themes`.
+    config.theme = "base16";
+  };
+
+  # Per-project toolchains, entered and left on cd. Without this, every repo
+  # needs `nix develop` typed by hand, so whatever happens to be installed
+  # globally wins by default and the flake in the repo is decoration.
+  #
+  # nix-direnv is the load-bearing half, not an optional extra: plain direnv
+  # re-evaluates the flake on every cd into the directory, which is slow enough
+  # to make the whole thing unusable, and it does not root the result against a
+  # garbage collect. nix-direnv caches and roots it.
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+  };
+
+  # git's pager, with syntax highlighting and word-level intra-line diffs.
+  # enableGitIntegration defaults to false and has to be asked for - it is what
+  # sets delta as the pager for diff/log/show/blame and as the filter for
+  # interactive staging. Chosen over difftastic, whose structural diffs are
+  # better on code refactors and worse on prose, and most of this repo is prose.
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      navigate = true;      # n and N jump file to file inside the pager
+      line-numbers = true;
+      syntax-theme = "base16";
+    };
+  };
+
   programs.starship = {
     enable = true;
     settings = {
       add_newline = false;
-      format = "$directory$git_branch$git_status$cmd_duration$line_break$character";
+      # An explicit format is a whitelist: every module not named here is off,
+      # however relevant it would be. $nix_shell and $python are named because
+      # without them a `nix develop` or an activated venv is completely
+      # invisible, which on a machine built entirely on Nix is the one thing the
+      # prompt most needs to say. Both render only when they apply.
+      format = "$directory$git_branch$git_status$nix_shell$python$cmd_duration$line_break$character";
       character = {
         success_symbol = "[❯](purple)";
         error_symbol = "[❯](red)";
@@ -130,6 +260,13 @@ in
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/wezterm";
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/nvim";
+
+  # The hand-written half of the shell, sourced from the tail of the ~/.zshrc
+  # home-manager generates. The file, not the directory: ~/.config/zsh is where
+  # a future ZDOTDIR would put .zsh_history and the compdump, and neither of
+  # those belongs in a public repo.
+  home.file.".config/zsh/rc.zsh".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/zsh/rc.zsh";
 
   # herdr gets the file, not the directory. Unlike nvim and wezterm above, its
   # config directory doubles as its runtime directory - herdr.sock and
