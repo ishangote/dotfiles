@@ -45,7 +45,7 @@ There are four distinct mechanisms. Know which one applies before you promise a 
 
 | Mechanism | Files | How it takes effect |
 | --- | --- | --- |
-| Live symlink | `home/.config/**`, `home/.claude/**`, `home/vscode/{settings,keybindings}.json`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
+| Live symlink | `home/.config/**`, `home/.claude/**`, `home/.pi/agent/**`, `home/vscode/{settings,keybindings}.json`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
 | Nix rebuild | `flake.nix`, `flake.lock`, `configuration.nix`, `home.nix`, `etc/codex/managed_config.toml` | `./rebuild.sh` |
 | Script, run by hand | `home/vscode/extensions.txt`, `home/mas/apps.tsv`, `home/macos-prefs/*.plist` | The matching `./*.sh` command |
 | Manual, no automation exists | `home/finder/favorites.tsv` | Drag into Finder's sidebar by hand |
@@ -56,6 +56,7 @@ Reload nudges for the live-symlink tier:
 - Neovim picks it up on next launch.
 - herdr's running server does **not** reload: press `prefix+shift+r` or run `herdr server reload-config`.
 - Claude Code reads `settings.json` at session start.
+- Pi needs `/reload` inside a running session after a theme or extension edit.
 - VS Code applies settings immediately.
 - iTerm2 loads its plist from this repo directly, but rewrites the whole file on quit.
 
@@ -101,6 +102,10 @@ All print usage from their own header comment when called with no argument.
 | `home/.config/herdr/config.toml` | herdr agent multiplexer: theme overrides, tmux-style prefix map, mouse and copy behaviour, update policy | symlink (file only) |
 | `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `high`, status line, plugin toggles | symlink |
 | `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage | symlink |
+| `home/.pi/agent/settings.json` | Pi: theme, thinking and startup behaviour, pinned extension packages | symlink (file only) |
+| `home/.pi/agent/models.json` | Pi: context-window overrides for the `openai-codex` provider | symlink (file only) |
+| `home/.pi/agent/themes/` | Pi: the `rose-pine-moon` theme Pi does not ship itself | symlink (dir) |
+| `home/.pi/agent/extensions/` | Pi: local extensions. `terminal-status-title.js` only. | symlink (dir) |
 | `home/AGENTS.md` | The global agent policy, shared by Claude Code and Codex | symlink (three targets) |
 | `home/USER.md` | Who the user is. Loaded on demand by `AGENTS.md`. | symlink |
 | `home/OPINIONS.md` | Durable engineering opinions. Loaded on demand by `AGENTS.md`. | symlink |
@@ -202,6 +207,7 @@ Before adding any file, check it against these:
 - `.gitignore` covers the Alfred preferences bundle (workflows routinely embed API keys), the Alfred Powerpack license, Obsidian plugin and theme code, Obsidian's `workspace.json`, and `.claude/settings.local.json`.
 - Obsidian **settings** are tracked; plugin **code** (`main.js`, `manifest.json`, `styles.css`) and the Minimal theme are not. That is a licensing decision, explained in the README. Do not vendor them.
 - `~/.codex/auth.json` holds live ChatGPT tokens and is neither symlinked nor committed.
+- `~/.pi/agent/auth.json` is the same for Pi. Only four repo-authored paths under `~/.pi/agent` are symlinked; the directory itself deliberately is not, because Pi keeps credentials, sessions, trust decisions and downloaded package trees there.
 - `~/.claude.json` holds oauth tokens and per-project history and is deliberately not managed.
 - `home/iterm2/com.googlecode.iterm2.plist` regrows two machine fingerprints (`NSOSPLastRootDirectory`, a bookmark blob embedding the boot volume UUID, and `NoSyncInstallationId`) every time iTerm2 quits. Run `./scrub-iterm2-plist.sh` before committing any change to it.
 - The git email is deliberately GitHub's noreply address, so pushes do not publish a scrapeable inbox. Leave it alone.
@@ -221,6 +227,7 @@ They are listed so their absence reads as a decision, not an omission.
 - Alfred: point its sync folder at `~/.dotfiles/home/alfred` once, in Alfred Preferences.
 - VS Code Settings Sync must stay **off**, or it periodically overwrites `settings.json` from the cloud and silently reverts repo edits.
 - `codex login` once; `codex doctor` confirms it.
+- Pi is installed from npm, not Nix or Homebrew: `npm install -g --ignore-scripts @earendil-works/pi-coding-agent`, then authenticate with `pi auth`.
 - Docker Desktop's first launch needs an admin password for its privileged helper.
 - `./macos-prefs.sh import` after a fresh setup, or Spotlight keeps Cmd+Space and fights Alfred.
 - Turn off each app's own "launch at login" checkbox; login agents are declared in `home.nix` instead.

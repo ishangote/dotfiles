@@ -29,8 +29,17 @@ in
   fonts.fontconfig.enable = true;
 
   home.sessionVariables.EDITOR = "nvim";
+
+  # node comes from `nix profile install nixpkgs#nodejs_22`, so npm's default
+  # global prefix is that read-only store path and `npm install -g` fails
+  # outright. Point it at a writable directory instead. Declared here rather
+  # than with `npm config set`, which would write an untracked ~/.npmrc.
+  home.sessionVariables.NPM_CONFIG_PREFIX = "${config.home.homeDirectory}/.npm-global";
+
   # The native claude installer lives here and self-updates; keep it reachable.
-  home.sessionPath = [ "$HOME/.local/bin" ];
+  # ~/.npm-global/bin is where the npm prefix above puts globally installed
+  # binaries - currently just `pi`, see the Pi section below.
+  home.sessionPath = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" ];
 
   programs.zsh = {
     enable = true;
@@ -137,6 +146,27 @@ in
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/settings.json";
   home.file.".claude/statusline-command.sh".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/statusline-command.sh";
+
+  # Pi. Installed from npm, NOT declared in configuration.nix: the version in
+  # this repo's pinned nixpkgs is 0.75.4, nine releases behind, and Pi installs
+  # its own declared packages at startup, so Homebrew/Nix would only ever fight
+  # it. Install with:
+  #   npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+  #
+  # Only these four repo-authored paths are managed. ~/.pi/agent ITSELF is
+  # deliberately not linked - Pi keeps auth.json, sessions, trust decisions,
+  # caches and the npm/git package trees it downloads in that same directory,
+  # and none of that belongs in git. Same reasoning as herdr above.
+  #
+  # Run /reload inside Pi after editing a theme or a local extension.
+  home.file.".pi/agent/settings.json".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.pi/agent/settings.json";
+  home.file.".pi/agent/models.json".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.pi/agent/models.json";
+  home.file.".pi/agent/themes".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.pi/agent/themes";
+  home.file.".pi/agent/extensions".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.pi/agent/extensions";
 
   # VS Code. These are live symlinks, so editing settings through the GUI writes
   # straight back into this repo.

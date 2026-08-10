@@ -25,6 +25,12 @@ home/alfred/license/
 # their own config, so none of it is tracked. See the Alfred section.
 home/alfred/Alfred.alfredpreferences/
 
+# Pi credentials, and the home-manager backups it leaves when adopting a file
+# that already existed. Only the four repo-authored paths under home/.pi are
+# tracked - see the Pi section of home.nix for what is deliberately unmanaged.
+home/.pi/agent/auth.json
+home/.pi/agent/**/*.backup
+
 # Claude Code's per-machine overrides: scratchpad paths, permission grants.
 # Also covered by a global ignore on this machine, but a clone has no such
 # thing, so the rule belongs here too.

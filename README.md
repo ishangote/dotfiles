@@ -577,6 +577,56 @@ thing.
 credential and is neither symlinked nor committed. On a fresh machine run
 `codex login` once; `codex doctor` confirms it under `auth`.
 
+## Pi
+
+A third coding agent, adopted from the reference dotfiles repo. Unlike Claude
+Code and Codex it is not declared in `configuration.nix`, and it does not follow
+the shared `AGENTS.md` policy above.
+
+**It comes from npm, not Nix or Homebrew.** The version in this repo's pinned
+nixpkgs is 0.75.4, nine releases behind, and Pi installs its own declared
+extension packages at startup, so a package manager pinning the binary would
+only ever fight it. Install it once:
+
+```sh
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+```
+
+That needs a writable npm prefix. `node` here comes from
+`nix profile install nixpkgs#nodejs_22`, so npm's default global prefix is that
+read-only store path and `npm install -g` fails outright. `home.nix` sets
+`NPM_CONFIG_PREFIX` to `~/.npm-global` and puts its `bin` on `PATH`, declared
+there rather than via `npm config set`, which would write an untracked
+`~/.npmrc`.
+
+**Four paths are managed, and `~/.pi/agent` itself deliberately is not.** Pi
+keeps `auth.json`, sessions, trust decisions, caches and the npm/git package
+trees it downloads in that same directory, so only the repo-authored parts are
+linked: `settings.json`, `models.json`, `themes/` and `extensions/`. Same
+reasoning as herdr. Run `/reload` inside Pi after editing a theme or a local
+extension.
+
+**The theme completes the moon set.** `themes/rose-pine-moon.json` gives Pi the
+same rose-pine moon palette WezTerm, Neovim and herdr already use, so all four
+match. Pi ships no moon variant of its own.
+
+**One local extension**, re-verified against Pi 0.84.1 since the reference
+authored it against 0.82.0. `terminal-status-title.js` sets the terminal title
+to a spinner while Pi works, then a completion mark plus the session name or
+current directory.
+
+**Package pins deviate from the reference in two ways.** `pi-web-access` is
+pinned to 0.20.0 rather than the reference's 0.14.0, which is six minor releases
+stale; the pin discipline is kept, the version is current.
+`pi-openai-server-compaction` is dropped entirely: it is experimental, sends
+compaction data to OpenAI, and declares the peer range `>=0.80.9 <0.81.0`, which
+excludes 0.84.1 outright. Add it back to `settings.json` if you want it. Both
+remaining packages execute with full user permissions and should be trusted like
+any other executable code.
+
+**`pi auth` is a manual step**, like `codex login`. Credentials land in
+`~/.pi/agent/auth.json`, which is neither symlinked nor committed.
+
 ## Docker
 
 Docker Desktop comes from the `docker-desktop` cask. The app bundles the whole
