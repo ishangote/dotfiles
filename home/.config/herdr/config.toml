@@ -26,6 +26,48 @@ panel_bg = "#232136"    # moon base
 surface0 = "#2a273f"    # moon surface
 surface1 = "#393552"    # moon overlay
 
+[keys]
+# tmux muscle memory. Adopted wholesale from a reference dotfiles repo.
+# Most of these already match herdr's defaults and are pinned here so the
+# whole prefix map is readable in one place instead of half-implicit.
+prefix = "ctrl+b"
+
+# Pane focus, vim directions. Same as herdr's defaults.
+focus_pane_left  = "prefix+h"
+focus_pane_down  = "prefix+j"
+focus_pane_up    = "prefix+k"
+focus_pane_right = "prefix+l"
+
+# tmux's two split keys, on herdr's two split actions. herdr defaults these to
+# prefix+minus and prefix+v.
+#
+# WARNING - the orientations come out inverted from tmux. herdr names splits the
+# way tmux's -h/-v FLAGS do: horizontal = side-by-side, vertical = stacked
+# (verified: a live `Split(Horizontal)` in session.json renders as two panes at
+# the same y with different x, and the API calls creating it "direction":"right").
+# tmux's KEYS are the other way round - " stacks, % goes side-by-side. So:
+#
+#   prefix+"  here -> side-by-side   (tmux's " stacks)
+#   prefix+%  here -> stacked        (tmux's % goes side-by-side)
+#
+# Kept as-is because it was adopted deliberately from the reference repo. Swap
+# the two key values if tmux muscle memory matters more than matching upstream.
+split_horizontal = "prefix+double_quote"
+split_vertical   = "prefix+percent"
+
+# Tabs. new_tab matches herdr's default; close_tab follows tmux's & instead of
+# herdr's prefix+shift+x.
+new_tab   = "prefix+c"
+close_tab = "prefix+ampersand"
+
+# Pickers. Both match herdr's defaults.
+workspace_picker = "prefix+w"
+goto             = "prefix+g"
+
+# copy-mode entry only. copy-mode's own internal keys (v/space select,
+# y/Enter copy, q/Esc cancel) are not configurable.
+copy_mode = "prefix+y"
+
 [ui]
 # Selecting text must NOT put it on the clipboard. Same rule the terminal and
 # Claude Code are already held to, and herdr is a third place that has to be
@@ -72,6 +114,13 @@ copy_on_select = false
 # not an accepted default, and it should not quietly reverse if upstream ever
 # changes what true means or what the default is.
 mouse_capture = true
+
+# Agent panel ordering. Pinned at herdr's default rather than accepted from it:
+# "spaces" groups the sidebar's agent rows under the space they belong to, so
+# the panel reads as a stable map of the workspace. The alternative,
+# "priority", reorders rows by which agent wants attention, which moves an
+# agent out from under its space the moment its state changes.
+agent_panel_sort = "spaces"
 
 [update]
 # Homebrew owns the installed version - configuration.nix declares herdr in
