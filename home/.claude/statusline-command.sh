@@ -49,24 +49,6 @@ else
   ctx_segment=$(printf "%sCtx: --%s" "$DIM" "$RESET")
 fi
 
-# Optional rate limit segment (5h / 7d), shown only when present
-five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
-week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
-rate_segment=""
-if [ -n "$five" ] || [ -n "$week" ]; then
-  parts=""
-  [ -n "$five" ] && parts="5h:$(printf '%.0f' "$five")%"
-  if [ -n "$week" ]; then
-    week_fmt="7d:$(printf '%.0f' "$week")%"
-    if [ -n "$parts" ]; then parts="$parts $week_fmt"; else parts="$week_fmt"; fi
-  fi
-  rate_segment=$(printf "%s%s%s" "$DIM" "$parts" "$RESET")
-fi
-
 printf "%s%s%s%s %s%s%s %s|%s %s" "$CYAN" "$model" "$RESET" "$effort_segment" "$DIM" "$dir_name" "$RESET" "$DIM" "$RESET" "$ctx_segment"
-
-if [ -n "$rate_segment" ]; then
-  printf " %s|%s %s" "$DIM" "$RESET" "$rate_segment"
-fi
 
 printf "\n"
