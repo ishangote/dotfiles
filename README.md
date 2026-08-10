@@ -20,7 +20,7 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Alfred preferences, AltTab settings
 - Open-at-login for Alfred, Magnet and Handy
 - VS Code settings, keybindings and extension list
-- Obsidian vault config for the llm-wiki vault
+- Obsidian vault config for the igote-workspace vault
 - Coding agents (Claude Code settings, Codex CLI and its settings) sharing one
   `AGENTS.md` policy and one permission posture
 
@@ -96,11 +96,18 @@ a package list, a shell alias, a macOS default.
 
 The agent directories follow the same rule as herdr, for the same reason. Only
 named files are linked, never the directory: `settings.json` and
-`statusline-command.sh` under `~/.claude`, `config.toml` and `AGENTS.md` under
-`~/.codex`. Everything else in those directories - sessions, projects, history,
-`settings.local.json`, Codex's sqlite state DBs and its `auth.json` - is
-machine-local runtime state, and in `auth.json`'s case a live credential. See
+`statusline-command.sh` under `~/.claude`, `AGENTS.md` alone under `~/.codex`,
+and four repo-authored paths under `~/.pi/agent`. Everything else in those
+directories - sessions, projects, history, `settings.local.json`, Codex's sqlite
+state DBs and its `auth.json` - is machine-local runtime state, and in
+`auth.json`'s case a live credential. See
 [Agents](#agents) for what the managed files actually set.
+
+`~/.codex/config.toml` is pointedly *not* linked, even though it looks like it
+should be. Codex rewrites that file from scratch whenever a setting changes in
+its TUI, which replaced the symlink with a regular file and aborted activation.
+Codex's agent policy lives in `etc/codex/managed_config.toml` instead, which
+`configuration.nix` installs to `/etc` where Codex cannot overwrite it.
 
 ## Shell
 
@@ -395,27 +402,6 @@ Three approaches were tried and rejected:
 If this becomes worth solving, granting Full Disk Access and versioning the
 `.sfl3` would at least give same-machine backup/restore.
 
-```sh
-./finder-favorites.sh save    # current favorites -> repo
-./finder-favorites.sh apply   # repo -> Finder, then: killall Finder
-./finder-favorites.sh list    # what Finder has right now
-```
-
-Two reasons this doesn't just copy the store file:
-
-- Favorites live in
-  `~/Library/Application Support/com.apple.sharedfilelist/*.sfl3`, which is
-  TCC-protected. Without Full Disk Access the directory simply *appears empty* -
-  it doesn't error, which makes this easy to misdiagnose.
-- Those files hold opaque bookmark blobs with volume UUIDs and inode numbers
-  baked in, so they don't reliably resolve on a different Mac.
-
-`mysides` goes through the `LSSharedFileList` API and deals in plain paths, so it
-needs no special permission and the output actually ports.
-
-`apply` only ever *adds*. Favorites not listed in the file are left alone - it
-will never silently remove something it doesn't know about.
-
 ## Terminals
 
 Both terminals are set up the same way:
@@ -637,7 +623,7 @@ one file, every agent picks it up.
 
 | | Claude Code | Codex |
 | --- | --- | --- |
-| File | `home/.claude/settings.json` | `home/.codex/config.toml` |
+| File | `home/.claude/settings.json` | `etc/codex/managed_config.toml` |
 | Prompting | `permissions.defaultMode = "bypassPermissions"` | `approval_policy = "never"` |
 | Containment | none available | `sandbox_mode = "danger-full-access"` |
 

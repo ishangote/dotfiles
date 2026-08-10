@@ -309,10 +309,16 @@ A stale explanation is worse than none, because the next reader trusts it.
 
 ## Known drift
 
-Real, found by reading the tree.
-Left in place rather than fixed as a side effect; flagged so nobody treats them as ground truth.
+None currently tracked.
 
-- `README.md:535` lists the Codex policy as `home/.codex/config.toml`. That file no longer exists; the policy moved to `etc/codex/managed_config.toml` in commit `4dfff59`.
-- `README.md:92` says `config.toml` under `~/.codex` is symlinked. It is not, and `home.nix:218-224` explains why: Codex rewrites that file and would clobber the link. Only `~/.codex/AGENTS.md` is managed.
-- `README.md:293-312` documents a `./finder-favorites.sh` with `save`/`apply`/`list`. No such script exists. The section above it correctly says favorites are manual, so the block is a leftover.
-- `README.md:22` says the Obsidian config covers "the llm-wiki vault". `home.nix:159` declares `igote-workspace`.
+The four entries that lived here - a stale Codex policy path, a claim that
+`~/.codex/config.toml` was symlinked, a block documenting a `./finder-favorites.sh`
+that never existed, and the wrong Obsidian vault name - were all fixed, along with
+a fifth the list had missed in `configuration.nix`.
+
+Keep this section honest rather than empty.
+When you find a claim in `README.md` or this file that the tree contradicts and you
+are not fixing it in the change you are making, record it here with the file, the
+line, and what the code actually does.
+The cost of drift here is high: most of this repo's value is in the recorded
+reasoning, so a confident wrong sentence is worse than a missing one.

@@ -200,7 +200,8 @@
       # OpenAI's terminal coding agent. This IS the right way to install it,
       # unlike claude-code below: `codex doctor` reports its own update action
       # as `brew upgrade --cask codex`, so the CLI defers to Homebrew instead of
-      # replacing its own binary. Config lives in home/.codex/config.toml.
+      # replacing its own binary. Its agent policy lives in
+      # etc/codex/managed_config.toml, installed to /etc above.
       # It's a cask, not a formula - the artifact is a prebuilt bin/codex.
       "codex"
       # Docker Desktop. The cask is "docker-desktop" - the plain "docker" cask
