@@ -1,0 +1,258 @@
+# AGENTS.md - working in this repo
+
+Read this before touching anything.
+`CLAUDE.md` in this directory is a symlink to this file, so both names load the same content.
+
+## What this repo is
+
+A declarative macOS setup for a single machine, built on Determinate Nix, nix-darwin and home-manager, with Homebrew driven declaratively underneath it.
+One command (`./bootstrap.sh`) takes a bare Mac to a fully configured one; one command (`./rebuild.sh`) applies every later change.
+
+The repo is public.
+Assume anything you add here is published.
+
+`README.md` is the human-facing document and carries the long-form rationale for every decision.
+This file is the agent-facing map: where things live, how a change reaches the machine, and what to verify.
+When the two disagree, the code is the truth and both documents are wrong.
+
+## Do not confuse the two AGENTS.md files
+
+| Path | What it is |
+| --- | --- |
+| `AGENTS.md` (this file, repo root) | Instructions for working *on* this repo. Not symlinked anywhere. |
+| `home/AGENTS.md` | The user's global agent policy, symlinked to `~/AGENTS.md`, `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. It is a payload file this repo ships, not guidance about this repo. |
+
+Editing `home/AGENTS.md` changes how every agent on this machine behaves, immediately, in every project.
+Treat it as a live production change and never edit it as a side effect of some other task.
+
+## The rule that catches everyone: these files are live
+
+Most files under `home/` are not copies.
+`home.nix` uses `mkOutOfStoreSymlink`, so `~/.config/nvim`, `~/.config/wezterm`, the VS Code settings and the agent policy files point straight at this working tree.
+
+**Editing a file under `home/` changes the running machine the moment you save it.**
+There is no staging step and no rebuild in between.
+An uncommitted experiment is already in effect.
+
+Two consequences worth internalising:
+
+- A `git checkout` or `git stash` in this repo silently reconfigures live applications.
+- Breaking `home/.claude/settings.json` breaks Claude Code itself, including the session you are running in.
+
+## How a change reaches the machine
+
+There are four distinct mechanisms. Know which one applies before you promise a change is applied.
+
+| Mechanism | Files | How it takes effect |
+| --- | --- | --- |
+| Live symlink | `home/.config/**`, `home/.claude/**`, `home/vscode/{settings,keybindings}.json`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
+| Nix rebuild | `flake.nix`, `flake.lock`, `configuration.nix`, `home.nix`, `etc/codex/managed_config.toml` | `./rebuild.sh` |
+| Script, run by hand | `home/vscode/extensions.txt`, `home/mas/apps.tsv`, `home/macos-prefs/*.plist` | The matching `./*.sh` command |
+| Manual, no automation exists | `home/finder/favorites.tsv` | Drag into Finder's sidebar by hand |
+
+Reload nudges for the live-symlink tier:
+
+- WezTerm reloads on save, no action needed.
+- Neovim picks it up on next launch.
+- herdr's running server does **not** reload: press `prefix+shift+r` or run `herdr server reload-config`.
+- Claude Code reads `settings.json` at session start.
+- VS Code applies settings immediately.
+- iTerm2 loads its plist from this repo directly, but rewrites the whole file on quit.
+
+`etc/codex/managed_config.toml` is the odd one out in the nix tier: `configuration.nix` reads it with `builtins.readFile` and embeds the text into an `/etc` derivation, so a rebuild is required even though the file looks like plain config.
+It cannot be a symlink, and that is deliberate.
+
+## Repo map
+
+### Entry points
+
+| File | Purpose |
+| --- | --- |
+| `flake.nix` | Pins nixpkgs, nix-darwin, home-manager and nix-homebrew to the 26.05 release. Declares the `mac` host and the single `user = "ishangote"` line. |
+| `flake.lock` | Exact input revisions. Generated. Update with `nix flake update`, never by hand. |
+| `configuration.nix` | System tier: macOS defaults, dock, Finder, trackpad, `CustomUserPreferences` escape hatch, Homebrew `brews`/`casks`, the `/etc/codex` policy. |
+| `home.nix` | User tier: Nix packages, zsh, starship, git, fzf/zoxide, every `mkOutOfStoreSymlink`, launchd login agents, the screenshots-dir activation hook. |
+
+The host label `mac` appears in `flake.nix`, `rebuild.sh` and `bootstrap.sh`.
+All three have to match.
+
+### Scripts
+
+| Script | What it does |
+| --- | --- |
+| `bootstrap.sh` | One-time fresh-Mac setup: install Nix, symlink the repo to `~/.dotfiles`, reconcile the username, back up conflicting hand-written config, run the first switch. |
+| `rebuild.sh` | Everything after that. `sudo darwin-rebuild switch --flake ~/.dotfiles#mac`. |
+| `vscode-extensions.sh` | `install` / `save` / `diff` against `home/vscode/extensions.txt`. |
+| `mas-apps.sh` | `install` / `status` / `save` against `home/mas/apps.tsv`. Exists because `homebrew.masApps` cannot reach the App Store daemon from nix-darwin's activation namespace. |
+| `macos-prefs.sh` | `export` / `import` / `diff` for plist-backed app preferences. Add a `domain:App Name` line to `DOMAINS` to cover another app. |
+| `obsidian-vault.sh` | Point one vault's `.obsidian` at the shared config. One-off counterpart to the declarations in `home.nix`. |
+| `scrub-iterm2-plist.sh` | Strips the two machine-fingerprint keys iTerm2 writes back on every quit. `--check` exits non-zero, suitable for a pre-commit hook. |
+
+All scripts resolve their own directory and are safe to run from anywhere.
+All use `set -euo pipefail`.
+All print usage from their own header comment when called with no argument.
+
+### Payload under `home/`
+
+| Path | Configures | Applied by |
+| --- | --- | --- |
+| `home/.config/wezterm/wezterm.lua` | WezTerm: rose-pine-moon, FiraCode Nerd Font 15, opacity 0.8, key and mouse bindings, unfocused-window dimming | symlink (dir) |
+| `home/.config/nvim/` | Neovim: `init.lua`, `lua/vim_config.lua`, `lua/keys.lua`, `lua/plugin.lua` (lazy.nvim bootstrap), `lua/plugins/*.lua`, `lazy-lock.json` | symlink (dir) |
+| `home/.config/herdr/config.toml` | herdr agent multiplexer: theme overrides, tmux-style prefix map, mouse and copy behaviour, update policy | symlink (file only) |
+| `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `high`, status line, plugin toggles | symlink |
+| `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage, rate limits | symlink |
+| `home/AGENTS.md` | The global agent policy, shared by Claude Code and Codex | symlink (three targets) |
+| `home/USER.md` | Who the user is. Loaded on demand by `AGENTS.md`. | symlink |
+| `home/OPINIONS.md` | Durable engineering opinions. Loaded on demand by `AGENTS.md`. | symlink |
+| `home/vscode/settings.json`, `keybindings.json` | VS Code. JSONC: comments and trailing commas, so plain `jq` will not parse them. | symlink |
+| `home/vscode/extensions.txt` | Extension list, one id per line | `./vscode-extensions.sh install` |
+| `home/obsidian/config/` | Shared `.obsidian` for every vault: `appearance.json`, `core-plugins.json`, `community-plugins.json`, `graph.json`, `plugins/*/data.json` | symlink (dir) |
+| `home/iterm2/com.googlecode.iterm2.plist` | Entire iTerm2 preferences, stored as XML for readable diffs | iTerm2's own custom-prefs-folder mechanism |
+| `home/macos-prefs/*.plist` | AltTab settings and `com.apple.symbolichotkeys` (18 of 22 system hotkeys disabled, including Cmd+Space so Alfred can own it) | `./macos-prefs.sh import` |
+| `home/mas/apps.tsv` | Mac App Store apps, `id<TAB>name` | `./mas-apps.sh install` |
+| `home/finder/favorites.tsv` | Intended Finder sidebar. Record only. | manual |
+
+`etc/codex/managed_config.toml` is the Codex agent policy (`approval_policy = "never"`, `sandbox_mode = "danger-full-access"`).
+It lives in `/etc` rather than `~/.codex/config.toml` because Codex rewrites that file from scratch on every settings change and drops keys it does not recognise.
+`/etc/codex/managed_config.toml` is the mdm layer, which outranks the user config and which Codex never writes to.
+
+### Docs
+
+- `README.md` - the full human-facing guide, with the reasoning behind every decision. Section anchors are stable, link to them.
+- `docs/wezterm-keys.md` - the complete WezTerm key reference, read off the machine with `wezterm show-keys` rather than from the docs.
+- `LICENSE` - MIT.
+
+## Declared or gone
+
+Two mechanisms here delete things that are not declared.
+Removing a line is a destructive operation, not a cleanup.
+
+- `homebrew.onActivation.cleanup = "zap"` in `configuration.nix`. Every switch **uninstalls** any formula or cask not listed in `brews`/`casks`. Dropping a line uninstalls software on the next rebuild.
+- `dock.persistent-apps` is the entire dock. Every switch replaces it. `persistent-others = [ ]` is declared precisely so a stray drag gets reverted.
+
+`cleanup = "zap"` does **not** reach App Store apps; Homebrew only removes what Homebrew installed.
+Removing a line from `apps.tsv` leaves the app on disk.
+
+Never remove an entry from either list as incidental tidying.
+If an entry looks wrong, say so and leave it.
+
+## Verify before you claim done
+
+Every one of these was run in this repo and works.
+Match the check to what you touched.
+
+```sh
+# Nix layer - evaluates the whole config without touching the system (~3s)
+nix build .#darwinConfigurations.mac.system --dry-run
+nix flake check --no-build
+
+# Shell scripts
+bash -n <script>.sh
+
+# JSON (strict): Claude settings, Obsidian config, lazy-lock
+jq -e . home/.claude/settings.json
+
+# JSONC (VS Code): has comments and trailing commas, plain jq FAILS by design.
+# Validate by loading it in VS Code, not with jq.
+
+# Plists
+plutil -lint home/iterm2/com.googlecode.iterm2.plist home/macos-prefs/*.plist
+
+# herdr
+herdr config check
+
+# WezTerm - non-zero exit on a config error, and the grep verifies the
+# copy-on-select bindings specifically
+wezterm --config-file home/.config/wezterm/wezterm.lua show-keys
+wezterm show-keys | grep 'Up {'      # nothing may say Complete*
+
+# Codex - --strict-config turns an unrecognised key into a hard error
+codex --strict-config doctor
+
+# iTerm2 plist, mandatory before committing any change to it
+./scrub-iterm2-plist.sh --check
+
+# Drift checks that change nothing
+./vscode-extensions.sh diff
+./macos-prefs.sh diff
+./mas-apps.sh status
+```
+
+A nix `--dry-run` emits a `builtins.derivation ... without a proper context` warning about `options.json`.
+That is upstream nix-darwin noise, not a problem with this repo.
+
+`./rebuild.sh` needs sudo and reconfigures the machine.
+Do not run it without an explicit go-ahead.
+
+## Conventions this repo holds itself to
+
+- **Comments carry the why, at length.** Nearly every non-obvious line here has a comment explaining what was tried, what broke, and what was verified. Match that density. A change with no explanation is out of place in this repo.
+- **Record what was verified, not what was assumed.** The existing comments say things like "verified with `codex doctor`" or "read off this machine with `wezterm show-keys`". Hold to that standard, and say plainly when something is untested.
+- **Only deviations are configured.** herdr's config carries settings that match upstream defaults only where the default was tested and deliberately pinned, and says so. Do not add settings just to be explicit.
+- **Markdown:** one sentence per physical line, so diffs stay clean. Never an em dash; use a plain dash.
+- **Upstream attribution:** when adapting someone else's repo or config, call it "the reference" or "upstream". Never their name or handle, in code, comments, commits or docs.
+- **Commits:** imperative mood, one concern per commit, explaining the why. See `git log` for the register. Never add an agent as co-author.
+- **Nix style:** two-space indent, one attribute per line, comments above the line they explain.
+
+## Secrets and the public-repo rules
+
+This repo is public and deliberately holds no credentials.
+Before adding any file, check it against these:
+
+- `.gitignore` covers the Alfred preferences bundle (workflows routinely embed API keys), the Alfred Powerpack license, Obsidian plugin and theme code, Obsidian's `workspace.json`, and `.claude/settings.local.json`.
+- Obsidian **settings** are tracked; plugin **code** (`main.js`, `manifest.json`, `styles.css`) and the Minimal theme are not. That is a licensing decision, explained in the README. Do not vendor them.
+- `~/.codex/auth.json` holds live ChatGPT tokens and is neither symlinked nor committed.
+- `~/.claude.json` holds oauth tokens and per-project history and is deliberately not managed.
+- `home/iterm2/com.googlecode.iterm2.plist` regrows two machine fingerprints (`NSOSPLastRootDirectory`, a bookmark blob embedding the boot volume UUID, and `NoSyncInstallationId`) every time iTerm2 quits. Run `./scrub-iterm2-plist.sh` before committing any change to it.
+- The git email is deliberately GitHub's noreply address, so pushes do not publish a scrapeable inbox. Leave it alone.
+
+One posture is intentionally permissive and is not a bug to fix: both agents are configured to never prompt and never sandbox.
+The README's Agents section carries the full argument and the warning that goes with it.
+If a change would touch that posture, raise it rather than adjusting it.
+
+## Manual steps no rebuild can perform
+
+macOS exposes these only through a GUI session, which `darwin-rebuild` activation does not have.
+They are listed so their absence reads as a decision, not an omission.
+
+- Wallpaper: `System Settings > Wallpaper > Solid Colors > Black`.
+- Finder sidebar favorites: drag them in, per `home/finder/favorites.tsv`.
+- Obsidian community plugins: install once from the community browser on a fresh Mac; the tracked `data.json` files then apply.
+- Alfred: point its sync folder at `~/.dotfiles/home/alfred` once, in Alfred Preferences.
+- VS Code Settings Sync must stay **off**, or it periodically overwrites `settings.json` from the cloud and silently reverts repo edits.
+- `codex login` once; `codex doctor` confirms it.
+- Docker Desktop's first launch needs an admin password for its privileged helper.
+- `./macos-prefs.sh import` after a fresh setup, or Spotlight keeps Cmd+Space and fights Alfred.
+- Turn off each app's own "launch at login" checkbox; login agents are declared in `home.nix` instead.
+
+## Keeping the docs true
+
+**Any change to a config in this repo must update the docs in the same commit.**
+Documentation drift is the main failure mode here, because most of this repo's value is in the recorded reasoning rather than the settings themselves.
+
+When you change something, update every row that mentions it:
+
+| You changed | Also update |
+| --- | --- |
+| Added, removed or renamed a tracked file | The repo map in this file, and `README.md` |
+| A `brews`/`casks` entry, or a Nix package | `README.md` (What you get, Homebrew is declarative) |
+| A `mkOutOfStoreSymlink` in `home.nix` | The apply-mechanism table and the repo map here, and the README's symlink section |
+| A WezTerm key or mouse binding | `docs/wezterm-keys.md`, plus the README's Terminals section if copy behaviour is involved |
+| A herdr key or setting | The inline comment in `config.toml`, and the README's herdr section |
+| An agent setting or the permission posture | `README.md` Agents section, and the tables above |
+| A verification command | The "Verify before you claim done" block above, after actually running it |
+| A new script | The scripts table here, and `README.md` |
+| A new manual step | The manual-steps list here, and `README.md` |
+
+If a change makes an existing comment or README paragraph wrong, fix the prose in the same commit.
+A stale explanation is worse than none, because the next reader trusts it.
+
+## Known drift
+
+Real, found by reading the tree.
+Left in place rather than fixed as a side effect; flagged so nobody treats them as ground truth.
+
+- `README.md:535` lists the Codex policy as `home/.codex/config.toml`. That file no longer exists; the policy moved to `etc/codex/managed_config.toml` in commit `4dfff59`.
+- `README.md:92` says `config.toml` under `~/.codex` is symlinked. It is not, and `home.nix:218-224` explains why: Codex rewrites that file and would clobber the link. Only `~/.codex/AGENTS.md` is managed.
+- `README.md:293-312` documents a `./finder-favorites.sh` with `save`/`apply`/`list`. No such script exists. The section above it correctly says favorites are manual, so the block is a leftover.
+- `README.md:22` says the Obsidian config covers "the llm-wiki vault". `home.nix:159` declares `igote-workspace`.
