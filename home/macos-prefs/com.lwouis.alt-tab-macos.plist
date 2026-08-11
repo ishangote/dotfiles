@@ -6,6 +6,8 @@
 	<string>1</string>
 	<key>appearanceVisibility</key>
 	<string>2</string>
+	<key>crashPolicy</key>
+	<string>1</string>
 	<key>holdShortcut</key>
 	<dict>
 		<key>secureData</key>
@@ -25,9 +27,11 @@
 	<key>menubarIcon</key>
 	<string>2</string>
 	<key>preferencesVersion</key>
-	<string>10.12.0</string>
+	<string>11.4.3</string>
 	<key>settingsWindowShownOnFirstLaunch</key>
 	<string>true</string>
+	<key>startAtLogin</key>
+	<string>false</string>
 	<key>updatePolicy</key>
 	<string>2</string>
 </dict>
