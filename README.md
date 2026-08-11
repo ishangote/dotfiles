@@ -17,7 +17,7 @@ One repo, one command, and a fresh Mac ends up configured the same way every tim
 - Terminal (WezTerm with the rose-pine moon theme)
 - Agent multiplexer (herdr, themed to match)
 - Apps (VS Code, Obsidian, Claude desktop, Docker Desktop, Numi, Alfred, AltTab, Magnet, Handy, iTerm2)
-- Alfred preferences, AltTab settings
+- Alfred preferences, AltTab settings, Xnip's capture shortcut
 - Open-at-login for Alfred, Magnet and Handy
 - VS Code settings, keybindings and extension list, for the default profile and
   for the two named profiles
@@ -835,7 +835,7 @@ Requirements: signed into the App Store with the Apple ID that owns the apps.
 Homebrew installed. Removing something from `apps.tsv` leaves it on disk; delete it
 by hand. `./mas-apps.sh status` lists those strays.
 
-Most of this list is really Safari configuration:
+Three of these are really Safari configuration:
 
 | App | Purpose |
 | --- | --- |
@@ -843,6 +843,7 @@ Most of this list is really Safari configuration:
 | Noir | Dark mode for Safari (paid) |
 | Vimlike | Vim keys in Safari |
 | Magnet | Window snapping |
+| Xnip | Screenshots, on Cmd+Shift+4 - see [Mac app preferences](#mac-app-preferences) |
 
 ## Safari
 
@@ -876,6 +877,13 @@ AltTab manages its own LaunchAgent (`com.lwouis.alt-tab-macos.plist`) when you
 enable start-at-login in its settings. That one is left alone - home-manager only
 touches agents it declares.
 
+Xnip is the other exception, and deliberately so: `kXnipLaunchAtLogin` is set in
+its tracked plist rather than by a launchd agent here. The rule above exists
+because a checkbox writes an opaque Login Item that a new Mac won't reproduce.
+That isn't true of Xnip - the key is versioned in `home/macos-prefs/` and applied
+by `./macos-prefs.sh import`, so it reproduces on its own. Declaring an agent for
+it as well would be the two-mechanisms problem this section warns about.
+
 ## Mac app preferences
 
 Apps that keep settings in a plist are versioned in `home/macos-prefs/`, as XML
@@ -891,18 +899,36 @@ Sparkle updater state and saved window positions are stripped out).
 Add a `domain:App Name` line to `DOMAINS` in the script to cover another app.
 Leave the app name empty for domains no running app owns.
 
+A sandboxed app that keeps settings in an app-group container needs a third
+field, `domain:App Name:label`, because `defaults` can only name that container
+by path and a path would otherwise nest the export inside `home/macos-prefs/`.
+Path domains are also written directly rather than through `defaults`, which
+reads them but refuses to write them - `defaults write` exits 1 and `defaults
+import` returns 0 having silently done nothing. That write **merges** keys
+instead of replacing the file, because the app keeps runtime state there too.
+Xnip is the only such entry today.
+
 `import` quits the owning app first on purpose: macOS caches preferences in
 `cfprefsd`, and a running app will write its in-memory copy straight back over
 the import.
 
+A sandboxed app's container does not exist until the app has been launched once,
+and `import` will not create it. Until then that entry skips with a message
+naming the app to launch. So on a fresh Mac the order is `./mas-apps.sh install`,
+launch the app once, then `./macos-prefs.sh import`.
+
 Covered today:
 
 - **AltTab** - appearance, hold shortcut, menu bar icon.
-- **`com.apple.symbolichotkeys`** - system keyboard shortcuts. 18 of the 22
+- **`com.apple.symbolichotkeys`** - system keyboard shortcuts. 19 of the 23
   hotkeys are disabled here, including Spotlight's Cmd+Space so Alfred can own
   it, plus Mission Control and Spaces navigation. Captured as a whole domain
   because writing a partial `AppleSymbolicHotKeys` dict replaces all of it.
   **Takes effect on next login, not immediately.**
+- **Xnip** - the Cmd+Shift+4 capture shortcut, the save format, and its own
+  launch-at-login. Hotkey 30 in the domain above is the built-in "save selected
+  area to file", disabled so Xnip can own that chord. The two have to ship
+  together: disabling 30 without Xnip installed leaves Cmd+Shift+4 dead.
 
 Magnet is not here - it stores nothing at the usual preferences path.
 

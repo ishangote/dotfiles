@@ -138,9 +138,9 @@ All print usage from their own header comment when called with no argument.
 | `home/.config/nvim/` | Neovim: `init.lua`, `lua/vim_config.lua`, `lua/keys.lua`, `lua/plugin.lua` (lazy.nvim bootstrap), `lua/plugins/*.lua`, `lazy-lock.json` | symlink (dir) |
 | `home/.config/zsh/rc.zsh` | The hand-written half of the shell: key bindings and anything else plain zsh. Sourced from the generated `~/.zshrc`. See "The shell is split in two" below. | symlink (file only) |
 | `home/.config/herdr/config.toml` | herdr agent multiplexer: theme overrides, tmux-style prefix map, mouse and copy behaviour, update policy | symlink (file only) |
-| `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `high`, status line, plugin toggles | symlink |
+| `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `xhigh`, status line, plugin toggles | symlink |
 | `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage | symlink |
-| `home/.pi/agent/settings.json` | Pi: theme, thinking and startup behaviour, pinned extension packages | symlink (file only) |
+| `home/.pi/agent/settings.json` | Pi: theme, thinking and startup behaviour, default provider and model, pinned extension packages. Pi also writes `lastChangelogVersion` here itself, so that key churns on every update. | symlink (file only) |
 | `home/.pi/agent/models.json` | Pi: context-window overrides for the `openai-codex` provider | symlink (file only) |
 | `home/.pi/agent/themes/` | Pi: the `rose-pine-moon` theme Pi does not ship itself | symlink (dir) |
 | `home/.pi/agent/extensions/` | Pi: local extensions. `terminal-status-title.js` only. | symlink (dir) |
@@ -152,7 +152,7 @@ All print usage from their own header comment when called with no argument.
 | `home/vscode/extensions.txt` | Extension list, one id per line | `./vscode-extensions.sh install` |
 | `home/obsidian/config/` | Shared `.obsidian` for every vault: `appearance.json`, `core-plugins.json`, `community-plugins.json`, `graph.json`, `plugins/*/data.json` | symlink (dir) |
 | `home/iterm2/com.googlecode.iterm2.plist` | Entire iTerm2 preferences, stored as XML for readable diffs | iTerm2's own custom-prefs-folder mechanism |
-| `home/macos-prefs/*.plist` | AltTab settings and `com.apple.symbolichotkeys` (18 of 22 system hotkeys disabled, including Cmd+Space so Alfred can own it) | `./macos-prefs.sh import` |
+| `home/macos-prefs/*.plist` | AltTab settings, `com.apple.symbolichotkeys` (19 of 23 system hotkeys disabled, including Cmd+Space so Alfred can own it and hotkey 30 so Xnip can own Cmd+Shift+4) and Xnip's capture shortcut | `./macos-prefs.sh import` |
 | `home/mas/apps.tsv` | Mac App Store apps, `id<TAB>name` | `./mas-apps.sh install` |
 | `home/finder/favorites.tsv` | Intended Finder sidebar. Record only. | manual |
 
@@ -293,7 +293,8 @@ They are listed so their absence reads as a decision, not an omission.
 - Pi is installed from npm, not Nix or Homebrew: `npm install -g --ignore-scripts @earendil-works/pi-coding-agent`, then authenticate with `pi auth`.
 - Docker Desktop's first launch needs an admin password for its privileged helper.
 - `./macos-prefs.sh import` after a fresh setup, or Spotlight keeps Cmd+Space and fights Alfred.
-- Turn off each app's own "launch at login" checkbox; login agents are declared in `home.nix` instead.
+- Launch Xnip once before that import. It is sandboxed, its app-group container does not exist until first launch, and `import` will not create it - the Xnip entry skips with a message until it does. `mas install` also needs an interactive sudo password for a first-time install, so `./mas-apps.sh install` cannot be run unattended.
+- Turn off each app's own "launch at login" checkbox; login agents are declared in `home.nix` instead. Two deliberate exceptions, both explained in the README: AltTab and Xnip manage their own, and are tracked rather than declared as agents.
 
 ## Keeping the docs true
 
