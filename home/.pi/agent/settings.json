@@ -14,5 +14,9 @@
   "packages": [
     "npm:pi-web-access@0.20.0",
     "npm:@ryan_nookpi/pi-extension-codex-fast-mode@0.2.6"
-  ]
+  ],
+  "lastChangelogVersion": "0.84.1",
+  "defaultProvider": "openrouter",
+  "defaultModel": "poolside/laguna-s-2.1:free",
+  "defaultThinkingLevel": "medium"
 }
