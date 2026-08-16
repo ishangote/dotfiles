@@ -279,8 +279,38 @@ in
   # agent policy at the bottom of this file) under ~/.claude are managed.
   # Everything else there (sessions, projects, history.jsonl,
   # settings.local.json) is machine-local runtime state and is left alone.
-  home.file.".claude/settings.json".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/settings.json";
+  #
+  # settings.json is COPIED, not symlinked - the one exception in this repo.
+  # Claude Code writes /model and /config changes straight back to
+  # ~/.claude/settings.json, so an out-of-store symlink put every session toggle
+  # into this repo's working tree. `effortLevel` churned through four commits
+  # that way, and 8716a27 ("Add Codex to the declarative setup") silently
+  # reverted the deliberate xhigh set in b541339, because the file was staged as
+  # a side effect of an unrelated change. Copying splits the two roles the file
+  # was being asked to play at once: this repo holds the declared default, the
+  # live copy is Claude Code's to scribble on, and a rebuild re-asserts the
+  # default. `git status` stops reporting a toggle as a repo change.
+  #
+  # The cost, which is deliberate: editing home/.claude/settings.json no longer
+  # takes effect on save. It needs ./rebuild.sh, and then a new session, since
+  # Claude Code reads the file at startup.
+  #
+  # Not the /etc route used for Codex below. Claude Code has a managed-settings
+  # tier at /Library/Application Support/ClaudeCode/managed-settings.json, but
+  # it covers permissions.defaultMode and not statusLine, enabledPlugins or
+  # skipDangerousModePermissionPrompt - and nothing there can be overridden at
+  # all, which is wrong for a preference like theme. Verified against the
+  # settings documentation on 2026-08-16.
+  #
+  # rm -f first: the previous generation left a symlink into the read-only nix
+  # store at this path, and `install` would follow it and fail. ~/.claude itself
+  # is created by the two home.file entries that still land there.
+  home.activation.installClaudeSettings =
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run rm -f "$HOME/.claude/settings.json"
+      run install -m 644 "${dotfiles}/home/.claude/settings.json" \
+        "$HOME/.claude/settings.json"
+    '';
   home.file.".claude/statusline-command.sh".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/statusline-command.sh";
 

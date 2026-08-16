@@ -37,7 +37,10 @@ An uncommitted experiment is already in effect.
 Two consequences worth internalising:
 
 - A `git checkout` or `git stash` in this repo silently reconfigures live applications.
-- Breaking `home/.claude/settings.json` breaks Claude Code itself, including the session you are running in.
+- Breaking `home/AGENTS.md` changes how every agent on this machine behaves, immediately.
+
+`home/.claude/settings.json` used to be the sharpest example of both and no longer is: it is copied on rebuild rather than symlinked, so a bad edit there costs a rebuild, not the running session.
+That was the whole point of the change - see the note under the mechanism table.
 
 ## How a change reaches the machine
 
@@ -45,8 +48,8 @@ There are four distinct mechanisms. Know which one applies before you promise a 
 
 | Mechanism | Files | How it takes effect |
 | --- | --- | --- |
-| Live symlink | `home/.config/**`, `home/.claude/**`, `home/.pi/agent/**`, `home/vscode/{settings,keybindings}.json`, `home/vscode/profiles/**`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
-| Nix rebuild | `flake.nix`, `flake.lock`, `configuration.nix`, `home.nix`, `etc/codex/managed_config.toml` | `./rebuild.sh` |
+| Live symlink | `home/.config/**`, `home/.claude/statusline-command.sh`, `home/.pi/agent/**`, `home/vscode/{settings,keybindings}.json`, `home/vscode/profiles/**`, `home/{AGENTS,USER,OPINIONS}.md`, `home/obsidian/config/**` | Immediately on save. Some apps need a nudge, see below. |
+| Nix rebuild | `flake.nix`, `flake.lock`, `configuration.nix`, `home.nix`, `etc/codex/managed_config.toml`, `home/.claude/settings.json` | `./rebuild.sh` |
 | Script, run by hand | `home/vscode/extensions.txt`, `home/mas/apps.tsv`, `home/macos-prefs/*.plist` | The matching `./*.sh` command |
 | Manual, no automation exists | `home/finder/favorites.tsv` | Drag into Finder's sidebar by hand |
 
@@ -56,7 +59,7 @@ Reload nudges for the live-symlink tier:
 - Neovim picks it up on next launch.
 - `rc.zsh` applies to the next shell you open. `exec zsh` in an existing one.
 - herdr's running server does **not** reload: press `prefix+shift+r` or run `herdr server reload-config`.
-- Claude Code reads `settings.json` at session start.
+- Claude Code reads `settings.json` at session start. That file is **not** in this tier - see below.
 - Pi needs `/reload` inside a running session after a theme or extension edit.
 - VS Code applies settings immediately. Untested for the per-profile files under `home/vscode/profiles/`, so switch profiles or restart if one does not take.
 - iTerm2 loads its plist from this repo directly, but rewrites the whole file on quit.
@@ -66,6 +69,15 @@ The symlinks are made by `./vscode-profiles.sh link` and the reason is in that s
 
 `etc/codex/managed_config.toml` is the odd one out in the nix tier: `configuration.nix` reads it with `builtins.readFile` and embeds the text into an `/etc` derivation, so a rebuild is required even though the file looks like plain config.
 It cannot be a symlink, and that is deliberate.
+
+`home/.claude/settings.json` is the other one, and the only file here that is **copied** rather than linked.
+A `home.activation` hook in `home.nix` installs it over `~/.claude/settings.json` on every rebuild.
+The reason is that Claude Code writes `/model` and `/config` changes back to that path, so while it was an out-of-store symlink every session toggle landed in this repo's working tree - `effortLevel` churned through four commits, and one of them reverted a deliberate setting as a side effect of an unrelated change.
+Copying separates the two jobs the file was doing at once: the repo holds the declared default, the live copy is Claude Code's to write, and a rebuild re-asserts the default.
+
+Two consequences.
+Editing `home/.claude/settings.json` no longer does anything until `./rebuild.sh` runs, and then only in a new session.
+And a rebuild discards whatever model or effort you had toggled to, by design - change the default in the repo, not in the running app.
 
 ## The shell is split in two
 
@@ -138,7 +150,7 @@ All print usage from their own header comment when called with no argument.
 | `home/.config/nvim/` | Neovim: `init.lua`, `lua/vim_config.lua`, `lua/keys.lua`, `lua/plugin.lua` (lazy.nvim bootstrap), `lua/plugins/*.lua`, `lazy-lock.json` | symlink (dir) |
 | `home/.config/zsh/rc.zsh` | The hand-written half of the shell: key bindings and anything else plain zsh. Sourced from the generated `~/.zshrc`. See "The shell is split in two" below. | symlink (file only) |
 | `home/.config/herdr/config.toml` | herdr agent multiplexer: theme overrides, tmux-style prefix map, mouse and copy behaviour, update policy | symlink (file only) |
-| `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `xhigh`, status line, plugin toggles | symlink |
+| `home/.claude/settings.json` | Claude Code: `bypassPermissions`, model `opus`, `effortLevel` `xhigh`, status line, plugin toggles. The declared default only - Claude Code owns the live copy. | copied by `home.nix` activation, on rebuild |
 | `home/.claude/statusline-command.sh` | Status line renderer: model, effort, cwd, context usage | symlink |
 | `home/.pi/agent/settings.json` | Pi: theme, thinking and startup behaviour, default provider and model, pinned extension packages. Pi also writes `lastChangelogVersion` here itself, so that key churns on every update. | symlink (file only) |
 | `home/.pi/agent/models.json` | Pi: context-window overrides for the `openai-codex` provider | symlink (file only) |

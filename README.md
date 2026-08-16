@@ -101,13 +101,16 @@ Run `./rebuild.sh` only when you change something that isn't a symlinked file:
 a package list, a shell alias, a macOS default.
 
 The agent directories follow the same rule as herdr, for the same reason. Only
-named files are linked, never the directory: `settings.json` and
-`statusline-command.sh` under `~/.claude`, `AGENTS.md` alone under `~/.codex`,
-and four repo-authored paths under `~/.pi/agent`. Everything else in those
-directories - sessions, projects, history, `settings.local.json`, Codex's sqlite
-state DBs and its `auth.json` - is machine-local runtime state, and in
-`auth.json`'s case a live credential. See
+named files are linked, never the directory: `statusline-command.sh` under
+`~/.claude`, `AGENTS.md` alone under `~/.codex`, and four repo-authored paths
+under `~/.pi/agent`. Everything else in those directories - sessions, projects,
+history, `settings.local.json`, Codex's sqlite state DBs and its `auth.json` -
+is machine-local runtime state, and in `auth.json`'s case a live credential. See
 [Agents](#agents) for what the managed files actually set.
+
+`~/.claude/settings.json` is the exception to the exception: it is **copied**
+on rebuild rather than symlinked, the only file here treated that way. See
+[Claude Code writes to its own settings](#claude-code-writes-to-its-own-settings).
 
 `~/.codex/config.toml` is pointedly *not* linked, even though it looks like it
 should be. Codex rewrites that file from scratch whenever a setting changes in
@@ -707,6 +710,39 @@ thing.
 `mas-apps.sh`. Codex stores ChatGPT tokens in `~/.codex/auth.json`, which is a
 credential and is neither symlinked nor committed. On a fresh machine run
 `codex login` once; `codex doctor` confirms it under `auth`.
+
+### Claude Code writes to its own settings
+
+Every other managed file in this repo is symlinked, so the repo copy *is* the
+live file. `~/.claude/settings.json` is the one exception: `home.nix` copies it
+into place with a `home.activation` hook on each rebuild.
+
+The reason is that Claude Code writes back to it. `/model` and `/config` persist
+straight into user settings, which is exactly the path being symlinked, so every
+mid-session toggle showed up as an uncommitted change in this repo. `effortLevel`
+churned through four commits that way, and one of them - a commit about adding
+Codex - silently reverted a deliberate `xhigh` that an earlier commit had set on
+purpose, because the file got staged along with everything else.
+
+That is a file being asked to do two incompatible jobs: hold a declared default
+that changes rarely and deliberately, and hold a preference you flip several
+times a day. Copying splits them. The repo holds the default; the live copy is
+Claude Code's to scribble on; `./rebuild.sh` re-asserts the default and throws
+the scribbles away.
+
+The trade, which is deliberate: editing `home/.claude/settings.json` no longer
+takes effect on save. It needs a rebuild, and then a new session, because Claude
+Code reads the file at startup. Change the default in the repo, not in the
+running app - a rebuild will discard the latter.
+
+This is *not* the route used for Codex, whose policy went to
+`/etc/codex/managed_config.toml` where Codex cannot reach it. Claude Code has an
+equivalent managed tier at
+`/Library/Application Support/ClaudeCode/managed-settings.json`, but it covers
+`permissions.defaultMode` and not `statusLine`, `enabledPlugins` or
+`skipDangerousModePermissionPrompt` - and nothing placed there can be overridden
+by anyone, which is the wrong behaviour for a preference like `theme`. Checked
+against the settings documentation on 2026-08-16.
 
 ## Pi
 
