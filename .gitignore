@@ -35,3 +35,12 @@ home/.pi/agent/**/*.backup
 # Also covered by a global ignore on this machine, but a clone has no such
 # thing, so the rule belongs here too.
 .claude/settings.local.json
+
+# Lavish's scratch directory. `lavish-axi` writes rendered HTML review artifacts
+# to .lavish/ in whatever directory it is run from, so working on this repo with
+# an agent drops unrelated pages here - a Ticketmaster design doc turned up in
+# this one. The scratch copy is transient by design; the finished artifact is
+# archived to the igote-workspace vault instead. This repo is public, so an
+# untracked directory that regenerates is worth ignoring explicitly rather than
+# noticing each time.
+.lavish/
